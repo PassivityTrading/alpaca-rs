@@ -1,10 +1,8 @@
 use std::{future::Future, pin::Pin};
 
 use base64::Engine;
-use reqwest::{
-    header::AUTHORIZATION,
-    Url,
-};
+use reqwest::{header::AUTHORIZATION, Method, Url};
+use serde::de::DeserializeOwned;
 
 pub mod model;
 
@@ -61,7 +59,7 @@ impl BrokerClient {
         T::deserialize(request.send().await?).await
     }
 
-    pub async fn execute_trading<T: Endpoint + TradingEndpoint>(
+    pub async fn execute_trading<T: Endpoint + BrokerTradingEndpoint>(
         &self,
         endpoint: T,
         account_id: &str,
@@ -97,7 +95,7 @@ pub enum Error {
 pub trait Endpoint {
     type Result;
 
-    fn method(&self) -> reqwest::Method;
+    fn method(&self) -> Method;
     fn url(&self) -> &'static str;
     fn configure(&self, request: reqwest::RequestBuilder) -> reqwest::RequestBuilder;
     #[doc(hidden)]
@@ -131,7 +129,16 @@ pub trait TradingEndpoint: Endpoint {
     fn base_url(&self, client: &impl Urls) -> Url {
         client.trading_base_url()
     }
+}
+
+pub trait BrokerTradingEndpoint: Endpoint + BrokerEndpoint {
     fn br_url(&self, _account_id: &str) -> String {
         self.url().to_owned()
     }
+}
+
+fn json_self<T: DeserializeOwned>(
+    response: reqwest::Response,
+) -> Pin<Box<dyn Future<Output = Result<T>> + 'static + Send + Sync>> {
+    Box::pin(async move { Ok(response.error_for_status()?.json::<T>().await?) })
 }

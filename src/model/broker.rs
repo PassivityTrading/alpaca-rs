@@ -10,14 +10,14 @@ pub struct GetAllAccounts {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created_before: Option<DateTime<Utc>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub status: Option<Status>,
+    pub status: Option<AccountStatus>,
     #[serde(default)]
     pub sort: Sort,
     pub entities: Vec<String>,
 }
 
 impl Endpoint for GetAllAccounts {
-    type Result = Vec<Account>;
+    type Result = Vec<SmallAccount>;
 
     fn url(&self) -> &'static str {
         "accounts"
@@ -36,7 +36,7 @@ impl Endpoint for GetAllAccounts {
     fn deserialize(
         response: reqwest::Response,
     ) -> Pin<Box<dyn Future<Output = Result<Self::Result>> + 'static + Send + Sync>> {
-        Box::pin(async move { Ok(response.json().await?) })
+        json_self(response)
     }
 }
 
@@ -71,7 +71,7 @@ impl Endpoint for CreateAccount {
     fn deserialize(
         response: reqwest::Response,
     ) -> Pin<Box<dyn Future<Output = Result<Self::Result>> + 'static + Send + Sync>> {
-        Box::pin(async move { Ok(response.json().await?) })
+        json_self(response)
     }
 }
 

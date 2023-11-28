@@ -1,10 +1,11 @@
 use super::*;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, DisplayFromStr};
 
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Default, Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum Status {
+pub enum AccountStatus {
     Onboarding,
     Submitted,
     Resubmitted,
@@ -24,6 +25,8 @@ pub enum Status {
     DisablePending,
     AccountClosed,
     PaperOnly,
+    #[default]
+    Active,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -32,7 +35,7 @@ pub enum Sort {
     Ascending,
     #[default]
     #[serde(rename = "desc")]
-    Descending
+    Descending,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
@@ -40,7 +43,7 @@ pub enum Sort {
 pub enum AccountType {
     Trading,
     Custodial,
-    DonorAdvised
+    DonorAdvised,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -48,8 +51,8 @@ pub struct Account {
     pub id: String,
     pub account_number: String,
     pub account_type: AccountType,
-    pub status: Status,
-    pub crypto_status: Status,
+    pub status: AccountStatus,
+    pub crypto_status: AccountStatus,
     pub currency: String,
     pub created_at: DateTime<Utc>,
     pub last_equity: String,
@@ -118,6 +121,99 @@ pub struct TrustedContact {
     pub given_name: String,
     pub family_name: String,
     pub email_address: String,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SmallAccount {
+    pub id: String,
+    pub account_number: String,
+    pub status: AccountStatus,
+    pub crypto_status: AccountStatus,
+    pub currency: String,
+    pub last_equity: String,
+    pub created_at: String,
+    pub account_type: String,
+    pub enabled_assets: Vec<String>,
+}
+
+#[derive(Default, Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum OrderStatus {
+    #[default]
+    Open,
+    Closed,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum OrderSide {
+    Buy,
+    Sell,
+}
+
+#[serde_as]
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Default)]
+pub enum OrderType {
+    #[default]
+    Market,
+    Limit {
+        #[serde_as(as = "DisplayFromStr")]
+        limit_price: f64,
+    },
+    Stop {
+        #[serde_as(as = "DisplayFromStr")]
+        stop_price: f64,
+    },
+    StopLimit {
+        #[serde_as(as = "DisplayFromStr")]
+        stop_price: f64,
+        #[serde_as(as = "DisplayFromStr")]
+        limit_price: f64,
+    },
+    #[serde(untagged)]
+    TrailingStop(TrailingStop),
+}
+
+#[serde_as]
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq)]
+pub enum TrailingStop {
+    #[serde(rename = "trail_price")]
+    Price(#[serde_as(as = "DisplayFromStr")] f64),
+    #[serde(rename = "trail_percent")]
+    Percent(#[serde_as(as = "DisplayFromStr")] f64),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Order {
+    pub status: OrderStatus,
+    pub side: OrderSide,
+    #[serde(rename = "type")]
+    pub kind: OrderType,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum OrderTif {
+    #[default]
+    Day,
+    #[serde(rename = "gtc")]
+    GoodTillCancelled,
+    #[serde(rename = "opg")]
+    Opg,
+    #[serde(rename = "cls")]
+    Cls,
+    #[serde(rename = "ioc")]
+    ImmediateOrCancel,
+    #[serde(rename = "fok")]
+    FillOrKill,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum OrderClass {
+    Simple,
+    #[default]
+    Bracket,
+    Oco,
+    Oto,
 }
 
 pub mod broker;
