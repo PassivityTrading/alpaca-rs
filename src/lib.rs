@@ -1,13 +1,22 @@
 use std::{future::Future, pin::Pin};
 
-use reqwest::Url;
+use base64::Engine;
+use reqwest::{
+    header::AUTHORIZATION,
+    Url,
+};
 
 pub mod model;
+
+pub struct BrokerAuth {
+    pub key: String,
+}
 
 pub struct BrokerClient {
     pub reqwest: reqwest::Client,
     pub trading_base_url: Url,
     pub broker_base_url: Url,
+    auth: BrokerAuth,
 }
 
 const TRADING_PROD: &str = "https://api.alpaca.markets";
@@ -16,28 +25,58 @@ const BROKER_PROD: &str = "https://broker-api.alpaca.markets/v1";
 const BROKER_SANDBOX: &str = "https://broker-api.sandbox.alpaca.markets/v1";
 
 impl BrokerClient {
-    pub fn new_prod() -> Self {
+    pub fn new_prod(auth: BrokerAuth) -> Self {
         Self {
             reqwest: reqwest::Client::new(),
             trading_base_url: Url::parse(TRADING_PROD).unwrap(),
             broker_base_url: Url::parse(BROKER_PROD).unwrap(),
+            auth,
         }
     }
 
-    pub fn new_sandbox() -> Self {
+    pub fn new_sandbox(auth: BrokerAuth) -> Self {
         Self {
             reqwest: reqwest::Client::new(),
             trading_base_url: Url::parse(TRADING_PAPER).unwrap(),
             broker_base_url: Url::parse(BROKER_SANDBOX).unwrap(),
+            auth,
         }
     }
 
-    pub async fn execute<T: Endpoint + BrokerEndpoint>(&self, endpoint: T) -> Result<T::Result> {
-        let request = endpoint.configure(self.reqwest.request(
-            endpoint.method(),
-            endpoint.base_url(self).join(endpoint.url()).unwrap(),
-        ));
+    fn br_auth(&self) -> String {
+        format!(
+            "Basic {}",
+            base64::engine::general_purpose::STANDARD.encode(&self.auth.key)
+        )
+    }
 
+    pub async fn execute<T: Endpoint + BrokerEndpoint>(&self, endpoint: T) -> Result<T::Result> {
+        let request = endpoint
+            .configure(self.reqwest.request(
+                endpoint.method(),
+                endpoint.base_url(self).join(endpoint.url()).unwrap(),
+            ))
+            .header(AUTHORIZATION, self.br_auth());
+
+        T::deserialize(request.send().await?).await
+    }
+
+    pub async fn execute_trading<T: Endpoint + TradingEndpoint>(
+        &self,
+        endpoint: T,
+        account_id: &str,
+    ) -> Result<T::Result> {
+        let request = endpoint
+            .configure(
+                self.reqwest.request(
+                    endpoint.method(),
+                    endpoint
+                        .base_url(self)
+                        .join(&endpoint.br_url(account_id))
+                        .unwrap(),
+                ),
+            )
+            .header(AUTHORIZATION, self.br_auth());
         T::deserialize(request.send().await?).await
     }
 }
@@ -73,5 +112,26 @@ pub trait BrokerEndpoint: Endpoint {
     }
 }
 
+#[doc(hidden)]
+pub trait Urls {
+    fn broker_base_url(&self) -> Url;
+    fn trading_base_url(&self) -> Url;
+}
 
+impl Urls for BrokerClient {
+    fn broker_base_url(&self) -> Url {
+        self.broker_base_url.clone()
+    }
+    fn trading_base_url(&self) -> Url {
+        self.trading_base_url.clone()
+    }
+}
 
+pub trait TradingEndpoint: Endpoint {
+    fn base_url(&self, client: &impl Urls) -> Url {
+        client.trading_base_url()
+    }
+    fn br_url(&self, _account_id: &str) -> String {
+        self.url().to_owned()
+    }
+}
