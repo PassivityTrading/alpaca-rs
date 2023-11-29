@@ -220,3 +220,34 @@ fn json_self<T: DeserializeOwned>(
 ) -> Pin<Box<dyn Future<Output = Result<T>> + 'static>> {
     Box::pin(async move { Ok(response.error_for_status()?.json::<T>().await?) })
 }
+
+#[doc(hidden)]
+#[macro_export]
+/// Internal macro used for making endpoints with builders.
+macro_rules! with_builder {
+($(|$mode:ident|)? $(#[$meta:meta])*$vis:vis struct $name:ident { $($(#[$fm:meta])* $fv:vis $field:ident: $fty:ty),* }) => {
+    paste::paste! {
+        $(#[$meta])*$vis struct $name { $($(#[$fm])*$fv $field: $fty,)* }
+
+        #[doc = "Builder for the [`"[<$name>]"`] endpoint."]
+        $vis struct [<$name Builder>]<'a>(&'a with_builder!(@mode $($mode)?), $name);
+        impl [<$name Builder>]<'_> {
+            pub async fn execute(self) -> Result<<$name as Endpoint>::Result> {
+                self.0.execute(self.1).await
+            }
+
+            $(
+            #[doc = with_builder!(@docmunch $(#[$fm])*)]
+            pub fn $field(mut self, $field: $fty) -> Self {
+                self.1.$field = $field;
+                self
+            })*
+        }
+    }
+};
+(@mode) => { with_builder!(@mode trading) };
+(@mode trading) => { TradingClient };
+(@mode broker) => { AccountView<'a> };
+(@docmunch #[doc = $doc:expr] $(#[$tail:meta])*) => { $doc };
+(@docmunch $(#[$tail:meta])*) => { "AAAA" };
+}

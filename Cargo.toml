@@ -9,6 +9,7 @@ edition = "2021"
 base64 = "0.21.5"
 chrono = { version = "0.4.31", features = ["serde"] }
 miette = "5.10.0"
+paste = "1.0.14"
 reqwest = { version = "0.11.22", features = ["json"] }
 serde = { version = "1.0.193", features = ["derive", "rc"] }
 serde_json = "1.0.108"

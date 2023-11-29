@@ -136,11 +136,82 @@ pub struct SmallAccount {
     pub enabled_assets: Vec<String>,
 }
 
-#[derive(Default, Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
+/// The status an order can have.
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
+#[serde(rename_all = "snake_case")]
 pub enum OrderStatus {
-    #[default]
-    Open,
-    Closed,
+    /// The order has been received by Alpaca, and routed to exchanges for
+    /// execution. This is the usual initial state of an order.
+    New,
+    /// The order has changed.
+    Replaced,
+    /// The order has been partially filled.
+    PartiallyFilled,
+    /// The order has been filled, and no further updates will occur for
+    /// the order.
+    Filled,
+    /// The order is done executing for the day, and will not receive
+    /// further updates until the next trading day.
+    DoneForDay,
+    /// The order has been canceled, and no further updates will occur for
+    /// the order. This can be either due to a cancel request by the user,
+    /// or the order has been canceled by the exchanges due to its
+    /// time-in-force.
+    Canceled,
+    /// The order has expired, and no further updates will occur for the
+    /// order.
+    Expired,
+    /// The order has been received by Alpaca, but hasn't yet been routed
+    /// to the execution venue. This state only occurs on rare occasions.
+    Accepted,
+    /// The order has been received by Alpaca, and routed to the
+    /// exchanges, but has not yet been accepted for execution. This state
+    /// only occurs on rare occasions.
+    PendingNew,
+    /// The order has been received by exchanges, and is evaluated for
+    /// pricing. This state only occurs on rare occasions.
+    AcceptedForBidding,
+    /// The order is waiting to be canceled. This state only occurs on
+    /// rare occasions.
+    PendingCancel,
+    /// The order is awaiting replacement.
+    PendingReplace,
+    /// The order has been stopped, and a trade is guaranteed for the
+    /// order, usually at a stated price or better, but has not yet
+    /// occurred. This state only occurs on rare occasions.
+    Stopped,
+    /// The order has been rejected, and no further updates will occur for
+    /// the order. This state occurs on rare occasions and may occur based
+    /// on various conditions decided by the exchanges.
+    Rejected,
+    /// The order has been suspended, and is not eligible for trading.
+    /// This state only occurs on rare occasions.
+    Suspended,
+    /// The order has been completed for the day (either filled or done
+    /// for day), but remaining settlement calculations are still pending.
+    /// This state only occurs on rare occasions.
+    Calculated,
+    /// The order is still being held. This may be the case for legs of
+    /// bracket-style orders that are not active yet because the primary
+    /// order has not filled yet.
+    Held,
+    /// Any other status that we have not accounted for.
+    ///
+    /// Note that having any such status should be considered a bug.
+    #[serde(other, rename(serialize = "unknown"))]
+    Unknown,
+}
+
+impl OrderStatus {
+    /// Check whether the status is terminal, i.e., no more changes will
+    /// occur to the associated order.
+    #[inline]
+    pub fn is_terminal(self) -> bool {
+        matches!(
+            self,
+            Self::Replaced | Self::Filled | Self::Canceled | Self::Expired | Self::Rejected
+        )
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
@@ -193,28 +264,53 @@ pub struct Order {
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum OrderTif {
-    #[default]
+    /// The order is good for the day, and it will be canceled
+    /// automatically at the end of Regular Trading Hours if unfilled.
     Day,
-    #[serde(rename = "gtc")]
-    GoodTillCancelled,
-    #[serde(rename = "opg")]
-    Opg,
-    #[serde(rename = "cls")]
-    Cls,
-    #[serde(rename = "ioc")]
-    ImmediateOrCancel,
+    /// The order is only executed if the entire order quantity can
+    /// be filled, otherwise the order is canceled.
     #[serde(rename = "fok")]
     FillOrKill,
+    /// The order requires all or part of the order to be executed
+    /// immediately. Any unfilled portion of the order is canceled.
+    #[serde(rename = "ioc")]
+    ImmediateOrCancel,
+    /// The order is good until canceled.
+    #[default]
+    #[serde(rename = "gtc")]
+    GoodTillCanceled,
+    /// This order is eligible to execute only in the market opening
+    /// auction. Any unfilled orders after the open will be canceled.
+    #[serde(rename = "opg")]
+    UntilMarketOpen,
+    /// This order is eligible to execute only in the market closing
+    /// auction. Any unfilled orders after the close will be canceled.
+    #[serde(rename = "cls")]
+    UntilMarketClose,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum OrderClass {
-    Simple,
+    /// Any non-bracket order (i.e., regular market, limit, or stop loss
+    /// orders).
     #[default]
+    Simple,
+    /// A bracket order is a chain of three orders that can be used to manage your
+    /// position entry and exit. It is a common use case of an
+    /// one-triggers & one-cancels-other order.
     Bracket,
-    Oco,
-    Oto,
+    /// A One-cancels-other is a set of two orders with the same side
+    /// (buy/buy or sell/sell) and currently only exit order is supported.
+    /// Such an order can be used to add two legs to an already filled
+    /// order.
+    #[serde(rename = "oco")]
+    OneCancelsOther,
+    /// A one-triggers-other order that can either have a take-profit or
+    /// stop-loss leg set. It essentially attached a single leg to an
+    /// entry order.
+    #[serde(rename = "oto")]
+    OneTriggersOther,
 }
 
 pub mod broker;

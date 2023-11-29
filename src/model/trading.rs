@@ -68,6 +68,7 @@ pub struct CreateOrder {
 
 impl Endpoint for CreateOrder {
     type Result = Order;
+
     fn url(&self) -> &'static str {
         "/orders"
     }
@@ -86,6 +87,7 @@ impl Endpoint for CreateOrder {
 
 impl TradingEndpoint for CreateOrder {}
 
+with_builder! { |broker|
 /// Create an order on behalf of an account in the Broker API.
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -128,7 +130,8 @@ pub struct CreateOrderBroker {
     pub subtag: Option<String>,
     // TODO explain [no official explanation]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub swap_fee_bps: Option<String>,
+    pub swap_fee_bps: Option<String>
+}
 }
 
 impl Endpoint for CreateOrderBroker {
@@ -155,5 +158,37 @@ impl BrokerEndpoint for CreateOrderBroker {}
 impl BrokerTradingEndpoint for CreateOrderBroker {
     fn br_url(&self, account_id: &str) -> String {
         format!("accounts/{account_id}/orders")
+    }
+}
+
+impl AccountView<'_> {
+    /// Create an order on behalf of this account in the Broker API.
+    /// This function returns a builder, so you configure the order and call
+    /// [`CreateOrderBrokerBuilder::execute`] to send it.
+    pub fn create_order(
+        &self,
+        symbol: String,
+        amount: OrderAmount,
+        side: OrderSide,
+    ) -> CreateOrderBrokerBuilder {
+        CreateOrderBrokerBuilder(
+            self,
+            CreateOrderBroker {
+                symbol,
+                amount,
+                side,
+                kind: OrderType::default(),
+                time_in_force: OrderTif::default(),
+                extended_hours: false,
+                client_order_id: None,
+                order_class: OrderClass::default(),
+                commission: None,
+                commission_bps: None,
+                source: None,
+                instructions: None,
+                subtag: None,
+                swap_fee_bps: None
+            },
+        )
     }
 }
