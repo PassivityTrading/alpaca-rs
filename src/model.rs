@@ -183,6 +183,7 @@ pub enum TrailingStop {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Order {
+    pub symbol: String,
     pub status: OrderStatus,
     pub side: OrderSide,
     #[serde(rename = "type")]

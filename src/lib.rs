@@ -12,7 +12,6 @@ pub struct BrokerAuth {
 
 pub struct BrokerClient {
     pub reqwest: reqwest::Client,
-    pub trading_base_url: Url,
     pub broker_base_url: Url,
     auth: BrokerAuth,
 }
@@ -26,7 +25,6 @@ impl BrokerClient {
     pub fn new_prod(auth: BrokerAuth) -> Self {
         Self {
             reqwest: reqwest::Client::new(),
-            trading_base_url: Url::parse(TRADING_PROD).unwrap(),
             broker_base_url: Url::parse(BROKER_PROD).unwrap(),
             auth,
         }
@@ -35,7 +33,6 @@ impl BrokerClient {
     pub fn new_sandbox(auth: BrokerAuth) -> Self {
         Self {
             reqwest: reqwest::Client::new(),
-            trading_base_url: Url::parse(TRADING_PAPER).unwrap(),
             broker_base_url: Url::parse(BROKER_SANDBOX).unwrap(),
             auth,
         }
@@ -101,7 +98,7 @@ pub trait Endpoint {
     #[doc(hidden)]
     fn deserialize(
         response: reqwest::Response,
-    ) -> Pin<Box<dyn Future<Output = Result<Self::Result>> + 'static + Send + Sync>>;
+    ) -> Pin<Box<dyn Future<Output = Result<Self::Result>> + 'static>>;
 }
 
 pub trait BrokerEndpoint: Endpoint {
@@ -139,6 +136,6 @@ pub trait BrokerTradingEndpoint: Endpoint + BrokerEndpoint {
 
 fn json_self<T: DeserializeOwned>(
     response: reqwest::Response,
-) -> Pin<Box<dyn Future<Output = Result<T>> + 'static + Send + Sync>> {
+) -> Pin<Box<dyn Future<Output = Result<T>> + 'static>> {
     Box::pin(async move { Ok(response.error_for_status()?.json::<T>().await?) })
 }

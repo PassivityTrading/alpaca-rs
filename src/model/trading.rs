@@ -16,7 +16,7 @@ impl Endpoint for GetAccount {
     }
     fn deserialize(
         response: reqwest::Response,
-    ) -> Pin<Box<dyn Future<Output = Result<Self::Result>> + 'static + Send + Sync>> {
+    ) -> Pin<Box<dyn Future<Output = Result<Self::Result>> + 'static>> {
         json_self(response)
     }
 }
@@ -69,7 +69,7 @@ impl Endpoint for CreateOrder {
     }
     fn deserialize(
         response: reqwest::Response,
-    ) -> Pin<Box<dyn Future<Output = Result<Self::Result>> + 'static + Send + Sync>> {
+    ) -> Pin<Box<dyn Future<Output = Result<Self::Result>> + 'static>> {
         json_self(response)
     }
 }
@@ -121,7 +121,7 @@ impl Endpoint for CreateOrderBroker {
     }
     fn deserialize(
         response: reqwest::Response,
-    ) -> Pin<Box<dyn Future<Output = Result<Self::Result>> + 'static + Send + Sync>> {
+    ) -> Pin<Box<dyn Future<Output = Result<Self::Result>> + 'static>> {
         json_self(response)
     }
 }

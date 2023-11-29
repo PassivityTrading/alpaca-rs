@@ -42,7 +42,7 @@
         };
 
         fenix = {
-          enable = true;
+          enable = false;
           profile = "default";
         };
 
@@ -53,7 +53,7 @@
             clang
             cmake
             gcc
-            config.fenix.toolchain.toolchain
+            # config.fenix.toolchain.toolchain
           ];
           env.LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
 
