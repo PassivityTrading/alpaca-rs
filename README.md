@@ -2,11 +2,11 @@
 
 ## Features
 
-- Ease of use - you just create a client and execute requests
-- Cross-platformness - can run on most platforms that Rust can run on - x86, aarch64, wasm (any platform that [`reqwest`](https://crates.io/crates/reqwest) can run on)
-- 🔥BLAZINGLY 🚀 FAST🧨 - uses [`reqwest`](https://crates.io/crates/reqwest) to make requests, which is also very blazingly fast
-- Interoperable - does not depend on any async runtime - do you want to use [`tokio`](https://crates.io/crates/tokio)? Go ahead. Prefer [`async-std`](https://crates.io/crates/async-std)? That's also an option. Literally anything that can poll a future will work.
-- Supports **ALL** Alpaca APIs - Broker API, Trading API and the Market Data API!
+- Ease of use - Minimal setup and no boilerplate
+- Cross-platform - can run on most platforms that Rust can run on - x86, aarch64, wasm (any platform that [`reqwest`](https://crates.io/crates/reqwest) can run on)
+- Speed - uses [`reqwest`](https://crates.io/crates/reqwest) to make API requests, for performance
+- Interoperable - does not depend on any async runtime. Anything that can poll a future, including [`tokio`](https://crates.io/crates/tokio) and [`async-std`](https://crates.io/crates/async-std) will work.
+- Supports **all** Alpaca APIs - Broker API, Trading API and the Market Data API
 
 ## Guide
 
@@ -39,7 +39,7 @@ Or add this to Cargo.toml:
 alpaca-rs.git = "https://github.com/PassivityTrading/alpaca-rs"
 ```
 
-Beware that if you use the git version, it may break, it may explode, etc.
+Beware that if you use the git version, it may break, it may not even compile, etc.
 We do not recommend you use this, but if you want the latest changes or there is no suitable [crates.io](https://crates.io) version, this would work.
 
 #### Using the Broker API
@@ -51,6 +51,7 @@ Create a client:
 let auth: BrokerAuth = BrokerAuth { key: std::env::var("ALPACA_BROKER_KEY").unwrap().into() };
 let client = BrokerClient::new_sandbox(auth);
 ```
+
 Make an account:
 ```rust,no_run
 use alpaca_rs::prelude::*;
