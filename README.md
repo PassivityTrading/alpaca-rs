@@ -45,18 +45,23 @@ We do not recommend you use this, but if you want the latest changes or there is
 #### Using the Broker API
 
 Create a client:
-```rs,ignore
-let auth: BrokerAuth = BrokerAuth { key: /* ... */ };
+```rust,no_run
+# use alpaca_rs::prelude::*;
+
+let auth: BrokerAuth = BrokerAuth { key: std::env::var("ALPACA_BROKER_KEY").unwrap().into() };
 let client = BrokerClient::new_sandbox(auth);
 ```
 Make an account:
-```rs,no_run
-# async fn main() -> Result<(), alpaca_rs::Error> {
-# let client = BrokerClient::new_sandbox(BrokerAuth { key: vec![] });
-# fn get_contact() -> Contact { unimplemented!() }
-# fn get_identity() -> Identity { unimplemented!() }
-let account = client.create_account(get_contact(), get_identity()).execute().await?;
-println!("Created account: {account:#?}");
-# Ok(())
-# }
+```rust,no_run
+use alpaca_rs::prelude::*;
+
+fn get_contact() -> Contact { todo!() }
+fn get_identity() -> Identity { todo!() }
+
+async fn run() -> Result<(), AlpacaError> {
+    let client = BrokerClient::new_sandbox(BrokerAuth { key: std::env::var("ALPACA_BROKER_KEY").unwrap().into() });
+    let account = client.create_account(get_contact(), get_identity()).execute().await?;
+    println!("Created account: {account:#?}");
+    Ok(())
+}
 ```

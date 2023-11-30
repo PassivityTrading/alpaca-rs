@@ -353,3 +353,8 @@ macro_rules! endpoint {
         fn force_specific<T>(this: &T, req: reqwest::RequestBuilder, lam: impl FnOnce(&T, reqwest::RequestBuilder) -> reqwest::RequestBuilder) -> reqwest::RequestBuilder { lam(this, req) }
         (force_specific::<Self>($this, $why, $configure)) }};
 }
+
+pub mod prelude {
+    pub use crate::model::*;
+    pub use crate::{BrokerAuth, BrokerClient, Error as AlpacaError, TradingAuth, TradingClient};
+}
