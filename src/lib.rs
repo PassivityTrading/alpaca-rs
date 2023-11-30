@@ -268,7 +268,7 @@ async fn json_self<T: DeserializeOwned>(response: reqwest::Response) -> Result<T
 #[macro_export]
 /// Internal macro used for making endpoints with builders.
 macro_rules! with_builder {
-    ($(|$mode:ident|)? $(#[$meta:meta])*$vis:vis struct $name:ident { $($(#$fm:tt)* $fv:vis $field:ident: $fty:ty),* }) => {
+    ($(|$mode:ident|)? $(#[$meta:meta])*$vis:vis struct $name:ident { $($(#$fm:tt)* $fv:vis $field:ident: $fty:ty),*$(,)? }) => {
         paste::paste! {
             $(#[$meta])*$vis struct $name { $($(#$fm)* $fv $field: $fty,)* }
 
@@ -292,16 +292,23 @@ macro_rules! with_builder {
 
                 $(
                 #[doc = with_builder!(@docmunch |$field| $(#$fm)*)]
-                pub fn $field(mut self, $field: $fty) -> Self {
-                    self.1.$field = $field;
+                pub fn $field(mut self, __real: impl Into<$fty>) -> Self {
+                    self.1.$field = Into::<$fty>::into(__real);
                     self
                 })*
             }
+
+            with_builder!(@mode_marker $name $($mode)?);
         }
     };
+    (@mode_marker $name:ident) => {};
+    (@mode_marker $name:ident account) => { with_builder!(@mode_marker $name broker); };
+    (@mode_marker $name:ident broker) => { impl BrokerEndpoint for $name {} };
+    (@mode_marker $name:ident trading) => { impl TradingEndpoint for $name {} };
     (@mode) => { with_builder!(@mode trading) };
     (@mode trading) => { TradingClient };
-    (@mode broker) => { AccountView<'a> };
+    (@mode broker) => { BrokerClient };
+    (@mode account) => { AccountView<'a> };
     (@docmunch |$field:ident| #[doc = $($doc:tt)*] $(#$tail:tt)*) => { $($doc)* };
     (@docmunch |$field:ident| $(#$tail:tt)*) => (
         concat!("If you see this, then the ", stringify!($field), " has no documentation. Please report this, as it is either a bug in the internal `with_builder!` macro, or a bug in the endpoint defintion, or the documentation people are very lazy. Either way, please file an issue for this in the [GitHub repository](<https://github.com/PassivityTrading/alpaca-rs/issues/new>).")

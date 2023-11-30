@@ -1,9 +1,11 @@
 use super::*;
 
-// TODO(filter) docs
 /// Get account details.
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct GetAccount;
+
+impl TradingEndpoint for GetAccount {}
+impl BrokerEndpoint for GetAccount {}
 
 /// Order amount (number of shares or dollar amount).
 #[serde_as]
@@ -17,7 +19,7 @@ pub enum OrderAmount {
     Notional(#[serde_as(as = "DisplayFromStr")] f64),
 }
 
-with_builder! {
+with_builder! { |trading|
     /// Create an order.
     #[derive(Serialize, Deserialize, Debug, Clone)]
     pub struct CreateOrder {
@@ -43,9 +45,7 @@ with_builder! {
     }
 }
 
-impl TradingEndpoint for CreateOrder {}
-
-with_builder! { |broker|
+with_builder! { |account|
     /// Create an order on behalf of an account in the Broker API.
     #[serde_as]
     #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -98,15 +98,11 @@ endpoint! {
     impl POST "/orders" = CreateOrderBroker => Order;
 }
 
-impl TradingEndpoint for GetAccount {}
-impl BrokerEndpoint for GetAccount {}
 impl BrokerTradingEndpoint for GetAccount {
     fn br_url(&self, account_id: &str) -> String {
         format!("accounts/{account_id}")
     }
 }
-
-impl BrokerEndpoint for CreateOrderBroker {}
 
 impl BrokerTradingEndpoint for CreateOrderBroker {
     fn br_url(&self, account_id: &str) -> String {
