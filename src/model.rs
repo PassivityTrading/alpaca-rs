@@ -1,4 +1,3 @@
-use super::*;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
@@ -206,7 +205,8 @@ impl OrderStatus {
     /// Check whether the status is terminal, i.e., no more changes will
     /// occur to the associated order.
     #[inline]
-    pub fn is_terminal(self) -> bool {
+    #[must_use]
+    pub fn is_terminal(&self) -> bool {
         matches!(
             self,
             Self::Replaced | Self::Filled | Self::Canceled | Self::Expired | Self::Rejected
@@ -312,7 +312,3 @@ pub enum OrderClass {
     #[serde(rename = "oto")]
     OneTriggersOther,
 }
-
-pub mod broker;
-pub mod market_data;
-pub mod trading;

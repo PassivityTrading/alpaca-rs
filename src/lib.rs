@@ -1,4 +1,19 @@
-use std::{future::Future, ops::Deref, pin::Pin};
+// perf
+#![feature(return_position_impl_trait_in_trait)]
+#![deny(clippy::all)]
+#![allow(
+    // don't care
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    // required by alpaca api
+    clippy::struct_excessive_bools,
+    // allows for better dx
+    clippy::wildcard_imports
+)]
+#![forbid(clippy::missing_safety_doc)]
+// #![deny(missing_docs)]
+
+use std::{future::Future, ops::Deref};
 
 use base64::Engine;
 use model::Account;
@@ -8,25 +23,37 @@ use reqwest::{
 };
 use serde::de::DeserializeOwned;
 
+pub mod api;
 pub mod model;
 
 pub struct BrokerAuth {
     pub key: Vec<u8>,
 }
 
+#[must_use = "A client does not do anything unless you execute endpoints with it yourself"]
 pub struct BrokerClient {
     pub reqwest: reqwest::Client,
     pub base_url: Url,
     auth: BrokerAuth,
 }
 
+/// The production/live url for the [Trading API](https://docs.alpaca.markets/docs/trading-api)
 const TRADING_PROD: &str = "https://api.alpaca.markets";
+/// see [Paper Trading](https://docs.alpaca.markets/docs/paper-trading)
 const TRADING_PAPER: &str = "https://paper-api.alpaca.markets";
+/// The production/live url for the [Broker API](https://docs.alpaca.markets/docs/about-broker-api)
 const BROKER_PROD: &str = "https://broker-api.alpaca.markets/v1";
+/// The [sandbox](https://docs.alpaca.markets/docs/integration-setup-with-alpaca#sandbox) base url for the broker api
 const BROKER_SANDBOX: &str = "https://broker-api.sandbox.alpaca.markets/v1";
 
 impl BrokerClient {
-    pub fn new_prod(auth: BrokerAuth) -> Self {
+    /// Creates a new client configured with the live base url for the broker api.
+    ///
+    /// # See also
+    /// [`BrokerClient::new`] for configuring the client to use your own base url
+    /// [`BrokerClient::new_sandbox`] for creating a client configured to use the testing
+    /// environment (the "sandbox")
+    pub fn new_live(auth: BrokerAuth) -> Self {
         Self {
             reqwest: reqwest::Client::new(),
             base_url: Url::parse(BROKER_PROD).unwrap(),
@@ -46,8 +73,12 @@ impl BrokerClient {
         Self { reqwest, ..self }
     }
 
-    pub fn with_base_url(self, base_url: Url) -> Self {
-        Self { base_url, ..self }
+    pub fn new(auth: BrokerAuth, base_url: Url) -> Self {
+        Self {
+            reqwest: reqwest::Client::new(),
+            base_url,
+            auth,
+        }
     }
 
     fn br_auth(&self) -> String {
@@ -89,12 +120,13 @@ impl BrokerClient {
 
     pub async fn account(&self, id: &str) -> Result<AccountView<'_>> {
         Ok(AccountView {
-            data: self.execute_trading(model::trading::GetAccount, id).await?,
+            data: self.execute_trading(api::trading::GetAccount, id).await?,
             client: self,
         })
     }
 }
 
+#[must_use = "An account view does not do anything unless you execute endpoints with it yourself"]
 pub struct AccountView<'a> {
     pub data: Account,
     client: &'a BrokerClient,
@@ -111,7 +143,7 @@ impl<'a> AccountView<'a> {
     pub async fn refetch(&mut self) -> Result<()> {
         self.data = self
             .client
-            .execute_trading(model::trading::GetAccount, &self.data.id)
+            .execute_trading(api::trading::GetAccount, &self.data.id)
             .await?;
 
         Ok(())
@@ -147,7 +179,7 @@ pub trait Endpoint {
     #[doc(hidden)]
     fn deserialize(
         response: reqwest::Response,
-    ) -> Pin<Box<dyn Future<Output = Result<Self::Result>> + 'static>>;
+    ) -> impl Future<Output = Result<Self::Result>> + 'static;
 }
 
 pub trait BrokerEndpoint: Endpoint {
@@ -161,6 +193,7 @@ pub struct TradingAuth {
     pub secret: String,
 }
 
+#[must_use = "A client does not do anything unless you execute endpoints with it yourself"]
 pub struct TradingClient {
     pub reqwest: reqwest::Client,
     pub base_url: Url,
@@ -168,7 +201,7 @@ pub struct TradingClient {
 }
 
 impl TradingClient {
-    pub fn new(auth: TradingAuth) -> Self {
+    pub fn new_live(auth: TradingAuth) -> Self {
         Self {
             reqwest: reqwest::Client::new(),
             base_url: TRADING_PROD.parse().unwrap(),
@@ -182,6 +215,18 @@ impl TradingClient {
             base_url: TRADING_PAPER.parse().unwrap(),
             auth,
         }
+    }
+
+    pub fn new(auth: TradingAuth, base_url: Url) -> Self {
+        Self {
+            reqwest: reqwest::Client::new(),
+            base_url,
+            auth,
+        }
+    }
+
+    pub fn with_reqwest(self, reqwest: reqwest::Client) -> Self {
+        Self { reqwest, ..self }
     }
 
     fn auth_headers(&self) -> HeaderMap {
@@ -215,39 +260,88 @@ pub trait BrokerTradingEndpoint: Endpoint + BrokerEndpoint {
     }
 }
 
-fn json_self<T: DeserializeOwned>(
-    response: reqwest::Response,
-) -> Pin<Box<dyn Future<Output = Result<T>> + 'static>> {
-    Box::pin(async move { Ok(response.error_for_status()?.json::<T>().await?) })
+async fn json_self<T: DeserializeOwned>(response: reqwest::Response) -> Result<T> {
+    Ok(response.error_for_status()?.json::<T>().await?)
 }
 
 #[doc(hidden)]
 #[macro_export]
 /// Internal macro used for making endpoints with builders.
 macro_rules! with_builder {
-($(|$mode:ident|)? $(#[$meta:meta])*$vis:vis struct $name:ident { $($(#[$fm:meta])* $fv:vis $field:ident: $fty:ty),* }) => {
-    paste::paste! {
-        $(#[$meta])*$vis struct $name { $($(#[$fm])*$fv $field: $fty,)* }
+    ($(|$mode:ident|)? $(#[$meta:meta])*$vis:vis struct $name:ident { $($(#$fm:tt)* $fv:vis $field:ident: $fty:ty),* }) => {
+        paste::paste! {
+            $(#[$meta])*$vis struct $name { $($(#$fm)* $fv $field: $fty,)* }
 
-        #[doc = "Builder for the [`"[<$name>]"`] endpoint."]
-        $vis struct [<$name Builder>]<'a>(&'a with_builder!(@mode $($mode)?), $name);
-        impl [<$name Builder>]<'_> {
-            pub async fn execute(self) -> Result<<$name as Endpoint>::Result> {
-                self.0.execute(self.1).await
+            #[doc = "Builder for the [`"[<$name>]"`] endpoint."]
+            #[must_use = "A builder does not do anything unless you use `.execute()` it"]
+            $vis struct [<$name Builder>]<'a>(&'a with_builder!(@mode $($mode)?), $name);
+            impl [<$name Builder>]<'_> {
+                /// Executes this request.
+                pub async fn execute(self) -> Result<<$name as Endpoint>::Result> {
+                    self.0.execute(self.1).await
+                }
+
+                /// Builds the endpoint data. If you use this, you would have to manually pass this
+                /// built endpoint to the client.
+                ///
+                /// You most likely don't need this, and instead need [`Self::execute`].
+                #[must_use]
+                pub fn build(self) -> $name {
+                    self.1
+                }
+
+                $(
+                #[doc = with_builder!(@docmunch |$field| $(#$fm)*)]
+                pub fn $field(mut self, $field: $fty) -> Self {
+                    self.1.$field = $field;
+                    self
+                })*
+            }
+        }
+    };
+    (@mode) => { with_builder!(@mode trading) };
+    (@mode trading) => { TradingClient };
+    (@mode broker) => { AccountView<'a> };
+    (@docmunch |$field:ident| #[doc = $($doc:tt)*] $(#$tail:tt)*) => { $($doc)* };
+    (@docmunch |$field:ident| $(#$tail:tt)*) => (
+        concat!("If you see this, then the ", stringify!($field), " has no documentation. Please report this, as it is either a bug in the internal `with_builder!` macro, or a bug in the endpoint defintion, or the documentation people are very lazy. Either way, please file an issue for this in the [GitHub repository](<https://github.com/PassivityTrading/alpaca-rs/issues/new>).")
+    );
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! endpoint {
+    ($(#[$meta:meta])* $vis:vis struct $name:ident $({ $($fields:tt)* })?; $($imp:tt)*) => {
+        #[derive(serde::Serialize, serde::Deserialize)]
+        $(#[$meta])*
+        $vis struct $name {$($fields)*}
+        $crate::endpoint!($($imp)*);
+    };
+    // GET "/account" = GetAccount => Account
+    ($(impl $method:ident $url:literal = $name:ident => $result:ty$({ $configure:expr })?);*$(;)?) => {
+        $(
+        impl Endpoint for $name {
+            type Result = $result;
+
+            fn url(&self) -> &'static str {
+                $url
             }
 
-            $(
-            #[doc = with_builder!(@docmunch $(#[$fm])*)]
-            pub fn $field(mut self, $field: $fty) -> Self {
-                self.1.$field = $field;
-                self
-            })*
-        }
-    }
-};
-(@mode) => { with_builder!(@mode trading) };
-(@mode trading) => { TradingClient };
-(@mode broker) => { AccountView<'a> };
-(@docmunch #[doc = $doc:expr] $(#[$tail:meta])*) => { $doc };
-(@docmunch $(#[$tail:meta])*) => { "AAAA" };
+            fn method(&self) -> reqwest::Method {
+                reqwest::Method::$method
+            }
+
+            fn configure(&self, __req: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+                endpoint!(@configure self __req $($configure)?)
+            }
+
+            fn deserialize(response: reqwest::Response) -> impl Future<Output = Result<Self::Result>> + 'static {
+                $crate::json_self(response)
+            }
+        })*
+    };
+    (@configure $this:ident $why:ident) => ($why);
+    (@configure $this:ident $why:ident $configure:expr) => {{
+        fn force_specific<T>(this: &T, req: reqwest::RequestBuilder, lam: impl FnOnce(&T, reqwest::RequestBuilder) -> reqwest::RequestBuilder) -> reqwest::RequestBuilder { lam(this, req) }
+        (force_specific::<Self>($this, $why, $configure)) }};
 }
