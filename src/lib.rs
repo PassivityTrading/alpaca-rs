@@ -1,3 +1,4 @@
+#![doc = include_str!("../README.md")]
 // perf
 #![feature(return_position_impl_trait_in_trait)]
 #![deny(clippy::all)]
