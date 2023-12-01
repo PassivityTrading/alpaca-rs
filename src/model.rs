@@ -312,3 +312,39 @@ pub enum OrderClass {
     #[serde(rename = "oto")]
     OneTriggersOther,
 }
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Hash)]
+#[serde(
+    tag = "bank_code_type",
+    content = "bank_code",
+    rename_all = "UPPERCASE"
+)]
+pub enum BankCode {
+    ABA(String),
+    BIC(String),
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum BankRelationshipStatus {
+    Queued,
+    SentToClearing,
+    Approved,
+    Canceled
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Hash)]
+pub struct BankRelationship {
+    pub id: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub account_id: String,
+    pub status: BankRelationshipStatus,
+    pub name: String,
+    pub account_number: String,
+    pub country: Option<String>,
+    pub state_province: Option<String>,
+    pub postal_code: Option<String>,
+    pub city: Option<String>,
+    pub street_address: Option<String>,
+}

@@ -50,6 +50,20 @@ with_builder! { |account|
     }
 }
 
+with_builder! { |account|
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    pub struct CreateBankRelationship {
+        pub name: String,
+        pub bank_code: BankCode,
+        pub account_number: String,
+        pub country: Option<String>,
+        pub state_province: Option<String>,
+        pub postal_code: Option<String>,
+        pub city: Option<String>,
+        pub street_address: Option<String>
+    }
+}
+
 impl BrokerTradingEndpoint for UpdateAccount {
     fn br_url(&self, account_id: &str) -> String {
         format!("accounts/{account_id}")
@@ -82,4 +96,5 @@ endpoint! {
     impl GET "/accounts" = GetAllAccounts => Vec<SmallAccount> { |this, request| request.query(this).query(&[("query", this.query.join(" "))]) };
     impl POST "/accounts" = CreateAccount => Account { |this, request| request.json(this) };
     impl PATCH "/accounts" = UpdateAccount => Account { |this, request| request.json(this) };
+    impl POST "/recipient_banks" = CreateBankRelationship => BankRelationship { |this, request| request.json(this) };
 }
