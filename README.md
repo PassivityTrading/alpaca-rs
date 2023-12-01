@@ -1,4 +1,4 @@
-# alpaca-sdk, an unofficial Rust SDK for the Alpaca API (WIP)
+# alpaca-rs, an unofficial Rust SDK for the Alpaca API (WIP)
 
 ## Features
 
@@ -47,7 +47,7 @@ We do not recommend you use this, but if you want the latest changes or there is
 
 Create a client:
 ```rust,no_run
-# use alpaca_rs::prelude::*;
+use alpaca_rs::prelude::*;
 
 let auth: BrokerAuth = BrokerAuth { key: std::env::var("ALPACA_BROKER_KEY").unwrap().into() };
 let client = BrokerClient::new_sandbox(auth);
