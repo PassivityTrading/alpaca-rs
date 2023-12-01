@@ -1,12 +1,12 @@
-# alpaca-sdk, an (unofficial) Rust SDK for the Alpaca API
+# alpaca-sdk, an unofficial Rust SDK for the Alpaca API (WIP)
 
 ## Features
 
-- Ease of use - Minimal setup and no boilerplate
-- Cross-platform - can run on most platforms that Rust can run on - x86, aarch64, wasm (any platform that [`reqwest`](https://crates.io/crates/reqwest) can run on)
-- Speed - uses [`reqwest`](https://crates.io/crates/reqwest) to make API requests, for performance
+- Ease of use - Minimal setup and no boilerplate.
+- Cross-platform - can run on most platforms that Rust can run on - x86, aarch64, wasm (any platform that [`reqwest`](https://crates.io/crates/reqwest) can run on).
+- Speed - uses [`reqwest`](https://crates.io/crates/reqwest) to make API requests, for performance.
 - Interoperable - does not depend on any async runtime. Anything that can poll a future, including [`tokio`](https://crates.io/crates/tokio) and [`async-std`](https://crates.io/crates/async-std) will work.
-- Supports **all** Alpaca APIs - Broker API, Trading API and the Market Data API
+- Supports **all** Alpaca APIs - Broker API, Trading API and the Market Data API.
 
 ## Guide
 
@@ -42,7 +42,8 @@ alpaca-rs.git = "https://github.com/PassivityTrading/alpaca-rs"
 Beware that if you use the git version, it may break, it may not even compile, etc.
 We do not recommend you use this, but if you want the latest changes or there is no suitable [crates.io](https://crates.io) version, this would work.
 
-#### Using the Broker API
+### Usage
+#### Broker API
 
 Create a client:
 ```rust,no_run
