@@ -61,8 +61,7 @@ pub struct Account {
     pub contact: Contact,
     pub identity: Identity,
     pub disclosures: Disclosures,
-    // FIXME: nonsense
-    pub documents: Vec<Vec<Document>>,
+    pub documents: Vec<Document>,
     pub agreements: Vec<Agreement>,
     pub trusted_contact: TrustedContact,
 }
