@@ -330,10 +330,10 @@ pub enum BankRelationshipStatus {
     Queued,
     SentToClearing,
     Approved,
-    Canceled
+    Canceled,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct BankRelationship {
     pub id: String,
     pub created_at: DateTime<Utc>,
@@ -342,9 +342,121 @@ pub struct BankRelationship {
     pub status: BankRelationshipStatus,
     pub name: String,
     pub account_number: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub country: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub state_province: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub postal_code: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub city: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub street_address: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum AchRelationshipStatus {
+    Queued,
+    Approved,
+    Pending,
+    CancelRequested,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum BankAccountType {
+    Checking,
+    Savings,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+pub struct AchRelationship {
+    pub id: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub account_id: String,
+    pub status: AchRelationshipStatus,
+    pub account_owner_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bank_account_type: Option<BankAccountType>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bank_account_number: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bank_routing_number: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nickname: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TransferType {
+    Ach,
+    Wire,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum Direction {
+    Incoming,
+    Outgoing,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum Timing {
+    #[default]
+    Immediate,
+    NextDay,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TransferStatus {
+    Queued,
+    ApprovalPending,
+    Pending,
+    SentToClearing,
+    Rejected,
+    Canceled,
+    Approved,
+    Complete,
+    Returned,
+}
+
+#[serde_as]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+pub struct Transfer {
+    pub id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub relationship_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bank_id: Option<String>,
+    pub account_id: String,
+    #[serde(rename = "type")]
+    pub kind: TransferType,
+    pub status: TransferStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+    #[serde_as(as = "DisplayFromStr")]
+    pub amount: f64,
+    pub direction: Direction,
+    pub created_at: DateTime<Utc>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expires_at: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub additional_information: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hold_until: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub instant_amount: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum BankCodeType {
+    Aba,
+    Bic,
 }

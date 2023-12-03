@@ -175,7 +175,10 @@ pub trait Endpoint {
     type Result;
 
     fn method(&self) -> Method;
+
+    #[doc(hidden)]
     fn url(&self) -> &'static str;
+    #[doc(hidden)]
     fn configure(&self, request: reqwest::RequestBuilder) -> reqwest::RequestBuilder;
     #[doc(hidden)]
     fn deserialize(
@@ -183,6 +186,7 @@ pub trait Endpoint {
     ) -> impl Future<Output = Result<Self::Result>> + 'static;
 }
 
+#[doc(hidden)]
 pub trait BrokerEndpoint: Endpoint {
     fn base_url(&self, client: &BrokerClient) -> Url {
         client.base_url.clone()
@@ -249,12 +253,14 @@ impl TradingClient {
     }
 }
 
+#[doc(hidden)]
 pub trait TradingEndpoint: Endpoint {
     fn base_url(&self, client: &TradingClient) -> Url {
         client.base_url.clone()
     }
 }
 
+#[doc(hidden)]
 pub trait BrokerTradingEndpoint: Endpoint + BrokerEndpoint {
     fn br_url(&self, _account_id: &str) -> String {
         self.url().to_owned()
@@ -319,13 +325,6 @@ macro_rules! with_builder {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! endpoint {
-    ($(#[$meta:meta])* $vis:vis struct $name:ident $({ $($fields:tt)* })?; $($imp:tt)*) => {
-        #[derive(serde::Serialize, serde::Deserialize)]
-        $(#[$meta])*
-        $vis struct $name {$($fields)*}
-        $crate::endpoint!($($imp)*);
-    };
-    // GET "/account" = GetAccount => Account
     ($(impl $method:ident $url:literal = $name:ident => $result:ty$({ $configure:expr })?);*$(;)?) => {
         $(
         impl Endpoint for $name {
