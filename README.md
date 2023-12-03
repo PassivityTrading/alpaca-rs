@@ -2,17 +2,17 @@
 
 ## Features
 
-- Ease of use - Minimal setup and no boilerplate.
+- Easy to use - Minimal setup and no boilerplate.
 - Cross-platform - can run on most platforms that Rust can run on - x86, aarch64, wasm (any platform that [`reqwest`](https://crates.io/crates/reqwest) can run on).
-- Speed - uses [`reqwest`](https://crates.io/crates/reqwest) to make API requests, for performance.
+- Fast - uses [`reqwest`](https://crates.io/crates/reqwest) to make API requests, for performance.
 - Interoperable - does not depend on any async runtime. Anything that can poll a future, including [`tokio`](https://crates.io/crates/tokio) and [`async-std`](https://crates.io/crates/async-std) will work.
-- Supports **all** Alpaca APIs - Broker API, Trading API and the Market Data API.
+- Supports **all** Alpaca APIs - Broker, Trading and Market Data APIs.
 
 ## Guide
 
 ### Installing
 
-#### Crates.io (currently not available)
+#### Crates.io (not released yet)
 
 Use this command:
 ```sh

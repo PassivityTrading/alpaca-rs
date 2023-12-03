@@ -1,3 +1,4 @@
+//! This module defines all the Alpaca APIs' data types.
 use std::fmt::Display;
 
 use chrono::{DateTime, Utc};
@@ -526,3 +527,16 @@ impl Display for SymbolOrAssetId {
         }
     }
 }
+
+/// Order amount (number of shares or dollar amount).
+#[serde_as]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, PartialOrd)]
+pub enum OrderAmount {
+    #[serde(rename = "qty")]
+    /// Number of shares.
+    Quantity(#[serde_as(as = "DisplayFromStr")] f64),
+    #[serde(rename = "notional")]
+    /// Notional amount is the amount of stock in the currency of the account.
+    Notional(#[serde_as(as = "DisplayFromStr")] f64),
+}
+

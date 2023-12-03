@@ -1,3 +1,4 @@
+//! A module providing pagination capabilities.
 use super::*;
 
 pub trait PaginationEndpoint {
@@ -93,7 +94,7 @@ impl<E: PaginationEndpoint + BrokerEndpoint> Paginatable<E> for BrokerClient {
         async move {
             Ok(self
                 .reqwest
-                .execute(req.header(AUTHORIZATION, self.br_auth()).build()?)
+                .execute(req.header(AUTHORIZATION, self.authorization()).build()?)
                 .await?
                 .error_for_status()?
                 .json()

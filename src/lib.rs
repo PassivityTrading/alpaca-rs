@@ -1,4 +1,5 @@
 #![doc = include_str!("../README.md")]
+#![doc(html_favicon_url = "https://files.alpaca.markets/webassets/favicon.ico")]
 // perf
 #![feature(return_position_impl_trait_in_trait)]
 #![deny(clippy::all)]
@@ -14,7 +15,7 @@
 #![forbid(clippy::missing_safety_doc)]
 // #![deny(missing_docs)]
 
-use std::{future::Future, ops::Deref};
+use std::{future::Future, ops::Deref, borrow::Cow};
 
 use base64::Engine;
 use model::Account;
@@ -28,10 +29,22 @@ pub mod api;
 pub mod model;
 pub mod pagination;
 
+/// The credentials used to authenticate with the Alpaca [Broker API](https://docs.alpaca.markets/docs/about-broker-api).
+///
+/// The key is a [`String`], that means you don't need to encode it as Base64 because this library does that automatically.
 pub struct BrokerAuth {
-    pub key: Vec<u8>,
+    pub key: String,
 }
 
+/// This structure provides access to the Alpaca [Broker API](https://docs.alpaca.markets/docs/about-broker-api).
+///
+/// For each available endpoint, there is a method on this struct, for example for
+/// [`api::broker::GetAllAccounts`] there is [`BrokerClient::get_all_accounts`], etc.
+///
+/// If you want to execute endpoints directly, use the [`BrokerClient::execute`] method.
+///
+/// If you want to access a specific account's data or scope the requests to that specific account,
+/// consider using the [`BrokerClient::account`] method, which returns an [`AccountView`].
 #[must_use = "A client does not do anything unless you execute endpoints with it yourself"]
 pub struct BrokerClient {
     pub reqwest: reqwest::Client,
@@ -39,7 +52,7 @@ pub struct BrokerClient {
     auth: BrokerAuth,
 }
 
-/// The production/live url for the [Trading API](https://docs.alpaca.markets/docs/trading-api)
+/// The production/live url for the [Trader API](https://docs.alpaca.markets/docs/trading-api)
 const TRADING_PROD: &str = "https://api.alpaca.markets";
 /// see [Paper Trading](https://docs.alpaca.markets/docs/paper-trading)
 const TRADING_PAPER: &str = "https://paper-api.alpaca.markets";
@@ -83,7 +96,7 @@ impl BrokerClient {
         }
     }
 
-    fn br_auth(&self) -> String {
+    fn authorization(&self) -> String {
         format!(
             "Basic {}",
             base64::engine::general_purpose::STANDARD.encode(&self.auth.key)
@@ -94,14 +107,14 @@ impl BrokerClient {
         let request = endpoint
             .configure(self.reqwest.request(
                 endpoint.method(),
-                endpoint.base_url(self).join(endpoint.url()).unwrap(),
+                endpoint.base_url(self).join(&endpoint.url()).unwrap(),
             ))
-            .header(AUTHORIZATION, self.br_auth());
+            .header(AUTHORIZATION, self.authorization());
 
         T::deserialize(request.send().await?).await
     }
 
-    pub async fn execute_trading<T: Endpoint + BrokerTradingEndpoint>(
+    pub async fn execute_account<T: Endpoint + BrokerTradingEndpoint>(
         &self,
         endpoint: T,
         account_id: &str,
@@ -116,18 +129,24 @@ impl BrokerClient {
                         .unwrap(),
                 ),
             )
-            .header(AUTHORIZATION, self.br_auth());
+            .header(AUTHORIZATION, self.authorization());
         T::deserialize(request.send().await?).await
     }
 
     pub async fn account(&self, id: &str) -> Result<AccountView<'_>> {
         Ok(AccountView {
-            data: self.execute_trading(api::trading::GetAccount, id).await?,
+            data: self.execute_account(api::trading::GetAccount, id).await?,
             client: self,
         })
     }
 }
 
+/// An account view is like a [`BrokerClient`], but scoped to a single account.
+///
+/// There is a caveat to using this - when created, it fetches the account data and stores it. You
+/// might not want this behavior, for example if you are doing one operation or don't need the
+/// account data at all. In that case, use the [`BrokerClient::execute_account`] method instead,
+/// providing it the endpoint's data and an account ID to act on.
 #[must_use = "An account view does not do anything unless you execute endpoints with it yourself"]
 pub struct AccountView<'a> {
     pub data: Account,
@@ -145,7 +164,7 @@ impl<'a> AccountView<'a> {
     pub async fn refetch(&mut self) -> Result<()> {
         self.data = self
             .client
-            .execute_trading(api::trading::GetAccount, &self.data.id)
+            .execute_account(api::trading::GetAccount, &self.data.id)
             .await?;
 
         Ok(())
@@ -155,12 +174,16 @@ impl<'a> AccountView<'a> {
         &self,
         endpoint: T,
     ) -> Result<T::Result> {
-        self.client.execute_trading(endpoint, &self.data.id).await
+        self.client.execute_account(endpoint, &self.data.id).await
     }
 }
 
+/// An Alpaca [`Result`](core::result::Result).
+/// This is just an alias to `Result<T, Error>`.
 pub type Result<T, E = Error> = core::result::Result<T, E>;
 
+/// An HTTP error (a "bad request" status code or a network error),
+/// or a serialization error (which means the response from the API was not valid JSON).
 #[derive(thiserror::Error, miette::Diagnostic, Debug)]
 pub enum Error {
     #[error(transparent)]
@@ -173,12 +196,14 @@ pub enum Error {
 
 /// An Alpaca endpoint. Has methods to configure a request and deserialize a response.
 pub trait Endpoint {
+    /// The output type of this endpoint.
+    /// Usually this is the object that an endpoint creates or modifies.
     type Result;
 
-    fn method(&self) -> Method;
-
     #[doc(hidden)]
-    fn url(&self) -> &'static str;
+    fn method(&self) -> Method;
+    #[doc(hidden)]
+    fn url(&self) -> Cow<'static, str>;
     #[doc(hidden)]
     fn configure(&self, request: reqwest::RequestBuilder) -> reqwest::RequestBuilder;
     #[doc(hidden)]
@@ -194,15 +219,19 @@ pub trait BrokerEndpoint {
     }
 }
 
+/// The credentials for authorizing on the Trader API.
 pub struct TradingAuth {
     pub key: String,
     pub secret: String,
 }
 
+// does not implment Debug to not leak creds
+/// This client provides access to a "standalone" account on the Alpaca brokerage.
 #[must_use = "A client does not do anything unless you execute endpoints with it yourself"]
 pub struct TradingClient {
     pub reqwest: reqwest::Client,
     pub base_url: Url,
+    // private for disallowing unpredictable modification and generally credential leaks
     auth: TradingAuth,
 }
 
@@ -246,7 +275,7 @@ impl TradingClient {
         let request = endpoint
             .configure(self.reqwest.request(
                 endpoint.method(),
-                endpoint.base_url(self).join(endpoint.url()).unwrap(),
+                endpoint.base_url(self).join(&endpoint.url()).unwrap(),
             ))
             .headers(self.auth_headers());
 
@@ -264,10 +293,12 @@ pub trait TradingEndpoint {
 #[doc(hidden)]
 pub trait BrokerTradingEndpoint: Endpoint + BrokerEndpoint {
     fn broker_url(&self, _account_id: &str) -> String {
-        self.url().to_owned()
+        self.url().into_owned()
     }
 }
 
+/// A convenience function for making sure the response is not an error
+/// and deserializing it as JSON into `T`.
 async fn json_self<T: DeserializeOwned>(response: reqwest::Response) -> Result<T> {
     Ok(response.error_for_status()?.json::<T>().await?)
 }
@@ -289,7 +320,7 @@ macro_rules! with_builder {
                     self.0.execute(self.1).await
                 }
 
-                /// Builds the endpoint data. If you use this, you would have to manually pass this
+                /// Builds the endpoint data. If you use this, you would have to manually give this
                 /// built endpoint to the client.
                 ///
                 /// You most likely don't need this, and instead need [`Self::execute`].
@@ -319,46 +350,68 @@ macro_rules! with_builder {
     (@mode account) => { AccountView<'a> };
     (@docmunch |$field:ident| #[doc = $($doc:tt)*] $(#$tail:tt)*) => { $($doc)* };
     (@docmunch |$field:ident| $(#$tail:tt)*) => (
-        concat!("If you see this, then the ", stringify!($field), " has no documentation. Please report this, as it is either a bug in the internal `with_builder!` macro, or a bug in the endpoint defintion, or the documentation people are very lazy. Either way, please file an issue for this in the [GitHub repository](<https://github.com/PassivityTrading/alpaca-rs/issues/new>).")
+        ""
     );
 }
 
 #[doc(hidden)]
 #[macro_export]
 macro_rules! endpoint {
-    ($(impl $method:ident $url:literal = $name:ident => $result:ty$({ $configure:expr })?);*$(;)?) => {
+    ($(impl $method:ident $url:tt = $name:ident $(=> $result:ty)?$({ $configure:expr })?$(| $id:ident $(($ur:expr))?)*);*$(;)?) => {
         $(
-        impl Endpoint for $name {
-            type Result = $result;
+            impl Endpoint for $name {
+                type Result = endpoint!(@result $($result)?);
 
-            fn url(&self) -> &'static str {
-                $url
-            }
+                fn url(&self) -> std::borrow::Cow<'static, str> {
+                    endpoint!(@url |self| $url)
+                }
 
-            fn method(&self) -> reqwest::Method {
-                reqwest::Method::$method
-            }
+                fn method(&self) -> reqwest::Method {
+                    reqwest::Method::$method
+                }
 
-            fn configure(&self, __req: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
-                endpoint!(@configure self __req $($configure)?)
-            }
+                fn configure(&self, __req: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+                    endpoint!(@configure self __req $($configure)?)
+                }
 
-            fn deserialize(response: reqwest::Response) -> impl Future<Output = Result<Self::Result>> + 'static {
-                $crate::json_self(response)
+                fn deserialize(response: reqwest::Response) -> impl Future<Output = Result<Self::Result>> + 'static {
+                    $crate::json_self(response)
+                }
             }
-        })*
+            $(endpoint!(@impl_thing $name $id $($ur)?);)*
+        )*
     };
+    (@impl_thing $name:ident broker) => { impl BrokerEndpoint for $name {} };
+    (@impl_thing $name:ident trading) => { impl TradingEndpoint for $name {} };
+    (@impl_thing $name:ident account $($br_url:expr)?) => {
+        impl BrokerTradingEndpoint for $name {
+            fn broker_url(&self, account_id: &str) -> String {
+                fn force_specific<T>(this: &T, account_id: &str, lam: impl FnOnce(&T, &str) -> String) -> String { lam(this, account_id) }
+                force_specific(self, account_id, endpoint!(@br_url $($br_url)?))
+            }
+        }
+    };
+    (@result $result:ty) => ($result);
+    (@result) => (());
+    (@br_url) => (|this, account_id| format!("/accounts/{account_id}{}", &this.url()));
+    (@br_url $br_url:expr) => ($br_url);
+    (@url |$this:ident| $url:literal) => (std::borrow::Cow::Borrowed($url));
+    (@url |$this:ident| ($url:expr)) => ({fn force_specific<T>(this: &T, lam: impl FnOnce(&T) -> String) -> String { lam(this) }
+        std::borrow::Cow::Owned(force_specific($this, $url))});
     (@configure $this:ident $why:ident) => ($why);
     (@configure $this:ident $why:ident $configure:expr) => {{
         fn force_specific<T>(this: &T, req: reqwest::RequestBuilder, lam: impl FnOnce(&T, reqwest::RequestBuilder) -> reqwest::RequestBuilder) -> reqwest::RequestBuilder { lam(this, req) }
         (force_specific::<Self>($this, $why, $configure)) }};
 }
 
+/// `use alpaca_rs::prelude::*;` to import the most commonly used types and clients.
 pub mod prelude {
     pub use crate::model::*;
     pub use crate::{BrokerAuth, BrokerClient, Error as AlpacaError, TradingAuth, TradingClient};
 }
 
+/// A trait for identifying a single object in the API.
+/// Required for pagination, as it needs the last item's ID.
 pub trait Identifiable {
     fn id(&self) -> String;
 }
