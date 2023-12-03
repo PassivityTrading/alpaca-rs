@@ -128,6 +128,12 @@ with_builder! { |account|
     }
 }
 
+impl BrokerTradingEndpoint for CreateTransfer {
+    fn broker_url(&self, account_id: &str) -> String {
+        format!("accounts/{account_id}/transfers")
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct GetOpenPositions;
 

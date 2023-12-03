@@ -26,6 +26,7 @@ use serde::de::DeserializeOwned;
 
 pub mod api;
 pub mod model;
+pub mod pagination;
 
 pub struct BrokerAuth {
     pub key: Vec<u8>,
@@ -187,7 +188,7 @@ pub trait Endpoint {
 }
 
 #[doc(hidden)]
-pub trait BrokerEndpoint: Endpoint {
+pub trait BrokerEndpoint {
     fn base_url(&self, client: &BrokerClient) -> Url {
         client.base_url.clone()
     }
@@ -241,7 +242,7 @@ impl TradingClient {
         headers
     }
 
-    pub async fn execute<T: TradingEndpoint>(&self, endpoint: T) -> Result<T::Result> {
+    pub async fn execute<T: Endpoint + TradingEndpoint>(&self, endpoint: T) -> Result<T::Result> {
         let request = endpoint
             .configure(self.reqwest.request(
                 endpoint.method(),
@@ -254,7 +255,7 @@ impl TradingClient {
 }
 
 #[doc(hidden)]
-pub trait TradingEndpoint: Endpoint {
+pub trait TradingEndpoint {
     fn base_url(&self, client: &TradingClient) -> Url {
         client.base_url.clone()
     }
@@ -356,4 +357,8 @@ macro_rules! endpoint {
 pub mod prelude {
     pub use crate::model::*;
     pub use crate::{BrokerAuth, BrokerClient, Error as AlpacaError, TradingAuth, TradingClient};
+}
+
+pub trait Identifiable {
+    fn id(&self) -> String;
 }
