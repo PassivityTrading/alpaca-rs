@@ -55,7 +55,7 @@ with_builder! { |account|
 }
 
 impl BrokerTradingEndpoint for UpdateAccount {
-    fn br_url(&self, account_id: &str) -> String {
+    fn broker_url(&self, account_id: &str) -> String {
         format!("accounts/{account_id}")
     }
 }
@@ -81,7 +81,7 @@ with_builder! { |account|
 }
 
 impl BrokerTradingEndpoint for CreateBankRelationship {
-    fn br_url(&self, account_id: &str) -> String {
+    fn broker_url(&self, account_id: &str) -> String {
         format!("accounts/{account_id}/recipient_banks")
     }
 }
@@ -103,7 +103,7 @@ with_builder! { |account|
 }
 
 impl BrokerTradingEndpoint for CreateAchRelationship {
-    fn br_url(&self, account_id: &str) -> String {
+    fn broker_url(&self, account_id: &str) -> String {
         format!("accounts/{account_id}/ach_relationships")
     }
 }
@@ -125,6 +125,67 @@ with_builder! { |account|
         pub additional_information: Option<String>,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub fee_payment_method: Option<String>,
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct GetOpenPositions;
+
+impl BrokerEndpoint for GetOpenPositions {}
+
+impl BrokerTradingEndpoint for GetOpenPositions {
+    fn broker_url(&self, account_id: &str) -> String {
+        format!("accounts/{account_id}/positions")
+    }
+}
+
+with_builder! { |account|
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    pub struct CloseAllPositions {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub cancel_orders: Option<bool>
+    }
+}
+
+impl BrokerTradingEndpoint for CloseAllPositions {
+    fn broker_url(&self, account_id: &str) -> String {
+        format!("accounts/{account_id}/positions")
+    }
+}
+
+with_builder! { |account|
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    pub struct GetOpenPosition {
+        pub symbol_or_asset_id: SymbolOrAssetId,
+    }
+}
+
+impl BrokerTradingEndpoint for GetOpenPosition {
+    fn broker_url(&self, account_id: &str) -> String {
+        format!(
+            "accounts/{account_id}/positions/{}",
+            self.symbol_or_asset_id
+        )
+    }
+}
+
+with_builder! { |account|
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    pub struct ClosePosition {
+        pub symbol_or_asset_id: SymbolOrAssetId,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub qty: Option<f64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub percentage: Option<f64>,
+    }
+}
+
+impl BrokerTradingEndpoint for ClosePosition {
+    fn broker_url(&self, account_id: &str) -> String {
+        format!(
+            "accounts/{account_id}/positions/{}",
+            self.symbol_or_asset_id
+        )
     }
 }
 
@@ -158,4 +219,8 @@ endpoint! {
     impl POST "/recipient_banks" = CreateBankRelationship => BankRelationship { |this, request| request.json(this) };
     impl POST "/ach_relationships" = CreateAchRelationship => AchRelationship { |this, request| request.json(this) };
     impl POST "/transfer" = CreateTransfer => Transfer { |this, request| request.json(this) };
+    impl GET "/positions" = GetOpenPositions => Vec<OpenPosition>;
+    impl GET "/positions/{symbol_or_asset_id}" = GetOpenPosition => OpenPosition;
+    impl DELETE "/positions" = CloseAllPositions => () { |this, request| request.query(this) };
+    impl DELETE "/positions/{symbol_or_asset_id}" = ClosePosition => () { |this, request| request.query(&[("qty", this.qty), ("percentage", this.percentage)]) };
 }

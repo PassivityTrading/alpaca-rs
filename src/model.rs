@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
@@ -459,4 +461,69 @@ pub struct Transfer {
 pub enum BankCodeType {
     Aba,
     Bic,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
+#[serde(rename_all = "lowercase")]
+pub enum Side {
+    Long,
+    Short,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
+#[serde(rename_all = "snake_case")]
+pub enum AssetClass {
+    UsEquity,
+    Crypto,
+}
+
+#[serde_as]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+pub struct OpenPosition {
+    pub asset_id: String,
+    pub symbol: String,
+    pub exchange: String,
+    pub asset_class: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub asset_marginable: Option<bool>,
+    #[serde_as(as = "DisplayFromStr")]
+    pub avg_entry_price: f64,
+    pub qty: String,
+    pub side: Side,
+    #[serde_as(as = "DisplayFromStr")]
+    pub market_value: f64,
+    #[serde_as(as = "DisplayFromStr")]
+    pub cost_basis: f64,
+    #[serde_as(as = "DisplayFromStr")]
+    pub unrealized_pl: f64,
+    #[serde_as(as = "DisplayFromStr")]
+    pub unrealized_plpc: f64,
+    #[serde_as(as = "DisplayFromStr")]
+    pub unrealized_intraday_pl: f64,
+    #[serde_as(as = "DisplayFromStr")]
+    pub unrealized_intraday_plpc: f64,
+    #[serde_as(as = "DisplayFromStr")]
+    pub current_price: f64,
+    #[serde_as(as = "DisplayFromStr")]
+    pub lastday_price: f64,
+    #[serde_as(as = "DisplayFromStr")]
+    pub change_today: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub swap_rate: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Hash)]
+#[serde(untagged)]
+pub enum SymbolOrAssetId {
+    SymbolId(String),
+    AssetId(String),
+}
+
+impl Display for SymbolOrAssetId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SymbolOrAssetId::SymbolId(symbol) => write!(f, "{symbol}"),
+            SymbolOrAssetId::AssetId(asset_id) => write!(f, "{asset_id}"),
+        }
+    }
 }

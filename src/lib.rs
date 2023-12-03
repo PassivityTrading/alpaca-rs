@@ -111,7 +111,7 @@ impl BrokerClient {
                     endpoint.method(),
                     endpoint
                         .base_url(self)
-                        .join(&endpoint.br_url(account_id))
+                        .join(&endpoint.broker_url(account_id))
                         .unwrap(),
                 ),
             )
@@ -262,7 +262,7 @@ pub trait TradingEndpoint: Endpoint {
 
 #[doc(hidden)]
 pub trait BrokerTradingEndpoint: Endpoint + BrokerEndpoint {
-    fn br_url(&self, _account_id: &str) -> String {
+    fn broker_url(&self, _account_id: &str) -> String {
         self.url().to_owned()
     }
 }

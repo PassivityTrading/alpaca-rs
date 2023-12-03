@@ -99,13 +99,13 @@ endpoint! {
 }
 
 impl BrokerTradingEndpoint for GetAccount {
-    fn br_url(&self, account_id: &str) -> String {
+    fn broker_url(&self, account_id: &str) -> String {
         format!("accounts/{account_id}")
     }
 }
 
 impl BrokerTradingEndpoint for CreateOrderBroker {
-    fn br_url(&self, account_id: &str) -> String {
+    fn broker_url(&self, account_id: &str) -> String {
         format!("accounts/{account_id}/orders")
     }
 }
