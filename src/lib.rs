@@ -114,7 +114,7 @@ impl BrokerClient {
         T::deserialize(request.send().await?).await
     }
 
-    pub async fn execute_account<T: Endpoint + BrokerTradingEndpoint>(
+    pub async fn execute_account<T: Endpoint + AccountEndpoint>(
         &self,
         endpoint: T,
         account_id: &str,
@@ -170,7 +170,7 @@ impl<'a> AccountView<'a> {
         Ok(())
     }
 
-    pub async fn execute<T: Endpoint + BrokerTradingEndpoint>(
+    pub async fn execute<T: Endpoint + AccountEndpoint>(
         &self,
         endpoint: T,
     ) -> Result<T::Result> {
@@ -291,7 +291,7 @@ pub trait TradingEndpoint {
 }
 
 #[doc(hidden)]
-pub trait BrokerTradingEndpoint: Endpoint + BrokerEndpoint {
+pub trait AccountEndpoint: Endpoint + BrokerEndpoint {
     fn broker_url(&self, _account_id: &str) -> String {
         self.url().into_owned()
     }
@@ -383,6 +383,7 @@ macro_rules! endpoint {
     };
     (@impl_thing $name:ident broker) => { impl BrokerEndpoint for $name {} };
     (@impl_thing $name:ident trading) => { impl TradingEndpoint for $name {} };
+    (@impl_thing $name:ident data) => { impl $crate::api::market_data::MarketDataEndpoint for $name {} };
     (@impl_thing $name:ident account $($br_url:expr)?) => {
         impl BrokerTradingEndpoint for $name {
             fn broker_url(&self, account_id: &str) -> String {
