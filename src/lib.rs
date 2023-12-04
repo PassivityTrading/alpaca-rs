@@ -15,7 +15,7 @@
 #![forbid(clippy::missing_safety_doc)]
 // #![deny(missing_docs)]
 
-use std::{future::Future, ops::Deref, borrow::Cow};
+use std::{borrow::Cow, future::Future, ops::Deref};
 
 use base64::Engine;
 use model::Account;
@@ -52,13 +52,13 @@ pub struct BrokerClient {
     auth: BrokerAuth,
 }
 
-/// The production/live url for the [Trader API](https://docs.alpaca.markets/docs/trading-api)
+/// The production/live url for the [Trader API](https://docs.alpaca.markets/docs/trading-api).
 const TRADING_PROD: &str = "https://api.alpaca.markets";
-/// see [Paper Trading](https://docs.alpaca.markets/docs/paper-trading)
+/// See [Paper Trading](https://docs.alpaca.markets/docs/paper-trading).
 const TRADING_PAPER: &str = "https://paper-api.alpaca.markets";
-/// The production/live url for the [Broker API](https://docs.alpaca.markets/docs/about-broker-api)
+/// The production/live url for the [Broker API](https://docs.alpaca.markets/docs/about-broker-api).
 const BROKER_PROD: &str = "https://broker-api.alpaca.markets/v1";
-/// The [sandbox](https://docs.alpaca.markets/docs/integration-setup-with-alpaca#sandbox) base url for the broker api
+/// The [sandbox](https://docs.alpaca.markets/docs/integration-setup-with-alpaca#sandbox) base url for the broker api.
 const BROKER_SANDBOX: &str = "https://broker-api.sandbox.alpaca.markets/v1";
 
 impl BrokerClient {
@@ -96,7 +96,7 @@ impl BrokerClient {
         }
     }
 
-    fn authorization(&self) -> String {
+    fn authorization_header(&self) -> String {
         format!(
             "Basic {}",
             base64::engine::general_purpose::STANDARD.encode(&self.auth.key)
@@ -109,12 +109,12 @@ impl BrokerClient {
                 endpoint.method(),
                 endpoint.base_url(self).join(&endpoint.url()).unwrap(),
             ))
-            .header(AUTHORIZATION, self.authorization());
+            .header(AUTHORIZATION, self.authorization_header());
 
         T::deserialize(request.send().await?).await
     }
 
-    pub async fn execute_account<T: Endpoint + AccountEndpoint>(
+    pub async fn send_request_with_account_id<T: Endpoint + EndpointWithAccountId>(
         &self,
         endpoint: T,
         account_id: &str,
@@ -129,13 +129,15 @@ impl BrokerClient {
                         .unwrap(),
                 ),
             )
-            .header(AUTHORIZATION, self.authorization());
+            .header(AUTHORIZATION, self.authorization_header());
         T::deserialize(request.send().await?).await
     }
 
-    pub async fn account(&self, id: &str) -> Result<AccountView<'_>> {
+    pub async fn account_view(&self, id: &str) -> Result<AccountView<'_>> {
         Ok(AccountView {
-            data: self.execute_account(api::trading::GetAccount, id).await?,
+            data: self
+                .send_request_with_account_id(api::trading::GetAccount, id)
+                .await?,
             client: self,
         })
     }
@@ -164,17 +166,19 @@ impl<'a> AccountView<'a> {
     pub async fn refetch(&mut self) -> Result<()> {
         self.data = self
             .client
-            .execute_account(api::trading::GetAccount, &self.data.id)
+            .send_request_with_account_id(api::trading::GetAccount, &self.data.id)
             .await?;
 
         Ok(())
     }
 
-    pub async fn execute<T: Endpoint + AccountEndpoint>(
+    pub async fn execute<T: Endpoint + EndpointWithAccountId>(
         &self,
         endpoint: T,
     ) -> Result<T::Result> {
-        self.client.execute_account(endpoint, &self.data.id).await
+        self.client
+            .send_request_with_account_id(endpoint, &self.data.id)
+            .await
     }
 }
 
@@ -231,6 +235,7 @@ pub struct TradingAuth {
 pub struct TradingClient {
     pub reqwest: reqwest::Client,
     pub base_url: Url,
+    pub market_data_base_url: Url,
     // private for disallowing unpredictable modification and generally credential leaks
     auth: TradingAuth,
 }
@@ -291,7 +296,7 @@ pub trait TradingEndpoint {
 }
 
 #[doc(hidden)]
-pub trait AccountEndpoint: Endpoint + BrokerEndpoint {
+pub trait EndpointWithAccountId: Endpoint + BrokerEndpoint {
     fn broker_url(&self, _account_id: &str) -> String {
         self.url().into_owned()
     }
@@ -383,9 +388,9 @@ macro_rules! endpoint {
     };
     (@impl_thing $name:ident broker) => { impl BrokerEndpoint for $name {} };
     (@impl_thing $name:ident trading) => { impl TradingEndpoint for $name {} };
-    (@impl_thing $name:ident data) => { impl $crate::api::market_data::MarketDataEndpoint for $name {} };
+    (@impl_thing $name:ident market_data) => { impl $crate::api::market_data::MarketDataEndpoint for $name {} };
     (@impl_thing $name:ident account $($br_url:expr)?) => {
-        impl BrokerTradingEndpoint for $name {
+        impl EndpointWithAccountId for $name {
             fn broker_url(&self, account_id: &str) -> String {
                 fn force_specific<T>(this: &T, account_id: &str, lam: impl FnOnce(&T, &str) -> String) -> String { lam(this, account_id) }
                 force_specific(self, account_id, endpoint!(@br_url $($br_url)?))

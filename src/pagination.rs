@@ -45,7 +45,10 @@ impl<'a, E: PaginationEndpoint, P> PaginationClient<'a, E, P> {
 impl<'a, T: Identifiable, E: PaginationEndpoint<Item = T>, P: Paginatable<E>>
     PaginationClient<'a, E, P>
 {
-    pub async fn next(&mut self) -> Result<(), Error> where T: DeserializeOwned {
+    pub async fn next(&mut self) -> Result<(), Error>
+    where
+        T: DeserializeOwned,
+    {
         self.page = self
             .client
             .run_request(
@@ -94,7 +97,10 @@ impl<E: PaginationEndpoint + BrokerEndpoint> Paginatable<E> for BrokerClient {
         async move {
             Ok(self
                 .reqwest
-                .execute(req.header(AUTHORIZATION, self.authorization()).build()?)
+                .execute(
+                    req.header(AUTHORIZATION, self.authorization_header())
+                        .build()?,
+                )
                 .await?
                 .error_for_status()?
                 .json()
@@ -104,13 +110,21 @@ impl<E: PaginationEndpoint + BrokerEndpoint> Paginatable<E> for BrokerClient {
 }
 
 impl TradingClient {
-    pub fn paginate<E: PaginationEndpoint + TradingEndpoint>(&self, config: E, page_size: usize) -> PaginationClient<E, Self> {
+    pub fn paginate<E: PaginationEndpoint + TradingEndpoint>(
+        &self,
+        config: E,
+        page_size: usize,
+    ) -> PaginationClient<E, Self> {
         PaginationClient::new(self, config, page_size)
     }
 }
 
 impl BrokerClient {
-    pub fn paginate<E: PaginationEndpoint + BrokerEndpoint>(&self, config: E, page_size: usize) -> PaginationClient<E, Self> {
+    pub fn paginate<E: PaginationEndpoint + BrokerEndpoint>(
+        &self,
+        config: E,
+        page_size: usize,
+    ) -> PaginationClient<E, Self> {
         PaginationClient::new(self, config, page_size)
     }
 }
