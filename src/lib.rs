@@ -54,12 +54,17 @@ pub struct BrokerClient {
 
 /// The production/live url for the [Trader API](https://docs.alpaca.markets/docs/trading-api).
 const TRADING_PROD: &str = "https://api.alpaca.markets";
-/// See [Paper Trading](https://docs.alpaca.markets/docs/paper-trading).
+/// The [Paper Trading](https://docs.alpaca.markets/docs/paper-trading) url for the Trader API.
 const TRADING_PAPER: &str = "https://paper-api.alpaca.markets";
 /// The production/live url for the [Broker API](https://docs.alpaca.markets/docs/about-broker-api).
 const BROKER_PROD: &str = "https://broker-api.alpaca.markets/v1";
 /// The [sandbox](https://docs.alpaca.markets/docs/integration-setup-with-alpaca#sandbox) base url for the broker api.
 const BROKER_SANDBOX: &str = "https://broker-api.sandbox.alpaca.markets/v1";
+// No API /version because its different on some endpoints
+/// The live url for the Market Data API
+const MARKET_PROD: &str = "https://data.alpaca.markets";
+/// The sandbox url for the Market Data API
+const MARKET_SANDBOX: &str = "https://data.sandbox.alpaca.markets";
 
 impl BrokerClient {
     /// Creates a new client configured with the live base url for the broker api.
@@ -114,7 +119,7 @@ impl BrokerClient {
         T::deserialize(request.send().await?).await
     }
 
-    pub async fn send_request_with_account_id<T: Endpoint + EndpointWithAccountId>(
+    pub async fn execute_with_account<T: Endpoint + AccountEndpoint>(
         &self,
         endpoint: T,
         account_id: &str,
@@ -133,10 +138,10 @@ impl BrokerClient {
         T::deserialize(request.send().await?).await
     }
 
-    pub async fn account_view(&self, id: &str) -> Result<AccountView<'_>> {
+    pub async fn account(&self, id: &str) -> Result<AccountView<'_>> {
         Ok(AccountView {
             data: self
-                .send_request_with_account_id(api::trading::GetAccount, id)
+                .execute_with_account(api::trading::GetAccount, id)
                 .await?,
             client: self,
         })
@@ -166,18 +171,18 @@ impl<'a> AccountView<'a> {
     pub async fn refetch(&mut self) -> Result<()> {
         self.data = self
             .client
-            .send_request_with_account_id(api::trading::GetAccount, &self.data.id)
+            .execute_with_account(api::trading::GetAccount, &self.data.id)
             .await?;
 
         Ok(())
     }
 
-    pub async fn execute<T: Endpoint + EndpointWithAccountId>(
+    pub async fn execute<T: Endpoint + AccountEndpoint>(
         &self,
         endpoint: T,
     ) -> Result<T::Result> {
         self.client
-            .send_request_with_account_id(endpoint, &self.data.id)
+            .execute_with_account(endpoint, &self.data.id)
             .await
     }
 }
@@ -245,6 +250,7 @@ impl TradingClient {
         Self {
             reqwest: reqwest::Client::new(),
             base_url: TRADING_PROD.parse().unwrap(),
+            market_data_base_url: MARKET_PROD.parse().unwrap(),
             auth,
         }
     }
@@ -253,6 +259,7 @@ impl TradingClient {
         Self {
             reqwest: reqwest::Client::new(),
             base_url: TRADING_PAPER.parse().unwrap(),
+            market_data_base_url: MARKET_SANDBOX.parse().unwrap(),
             auth,
         }
     }
@@ -261,6 +268,16 @@ impl TradingClient {
         Self {
             reqwest: reqwest::Client::new(),
             base_url,
+            market_data_base_url: MARKET_PROD.parse().unwrap(),
+            auth,
+        }
+    }
+
+    pub fn new_full(auth: TradingAuth, base_url: Url, market_data_base_url: Url) -> Self {
+        Self {
+            reqwest: reqwest::Client::new(),
+            base_url,
+            market_data_base_url,
             auth,
         }
     }
@@ -296,7 +313,7 @@ pub trait TradingEndpoint {
 }
 
 #[doc(hidden)]
-pub trait EndpointWithAccountId: Endpoint + BrokerEndpoint {
+pub trait AccountEndpoint: Endpoint + BrokerEndpoint {
     fn broker_url(&self, _account_id: &str) -> String {
         self.url().into_owned()
     }
@@ -390,7 +407,7 @@ macro_rules! endpoint {
     (@impl_thing $name:ident trading) => { impl TradingEndpoint for $name {} };
     (@impl_thing $name:ident market_data) => { impl $crate::api::market_data::MarketDataEndpoint for $name {} };
     (@impl_thing $name:ident account $($br_url:expr)?) => {
-        impl EndpointWithAccountId for $name {
+        impl AccountEndpoint for $name {
             fn broker_url(&self, account_id: &str) -> String {
                 fn force_specific<T>(this: &T, account_id: &str, lam: impl FnOnce(&T, &str) -> String) -> String { lam(this, account_id) }
                 force_specific(self, account_id, endpoint!(@br_url $($br_url)?))
