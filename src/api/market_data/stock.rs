@@ -118,7 +118,20 @@ impl PaginationEndpoint for GetHistoricalBars {
         <Self as Endpoint>::deserialize(response)
     }
 }
+
+with_builder! { |market_data|
+    #[serde_as]
+    #[derive(Clone, Debug, Serialize, Deserialize)]
+    pub struct GetLatestBars {
+        #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+        pub symbols: Vec<String>,
+        pub feed: StockFeed,
+        pub currency: Option<String>
+    }
+}
+
 endpoint! {
     impl GET "/v2/stocks/auctions" = GetHistoricalAuctions => HistoricalAuctions { |this, request| request.query(this) };
     impl GET "/v2/stocks/bars" = GetHistoricalBars => HistoricalBars { |this, request| request.query(this) };
+    impl GET "/v2/stocks/bars/latest" = GetLatestBars => LatestBars { |this, request| request.query(this) };
 }

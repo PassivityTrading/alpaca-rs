@@ -655,6 +655,7 @@ pub enum CorporateActionAdjustment {
 pub struct HistoricalBars {
     pub bars: Vec<HistoricalBar>,
     pub next_page_token: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub currency: Option<String>,
 }
 
@@ -676,4 +677,11 @@ pub struct HistoricalBar {
     pub trade_count: i64,
     #[serde(rename = "vw")]
     pub avg_vol_weighted: f64
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct LatestBars {
+    pub bars: Vec<HistoricalBar>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub currency: Option<String>,
 }
