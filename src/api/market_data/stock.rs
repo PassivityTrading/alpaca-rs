@@ -17,12 +17,15 @@ pub enum StockFeed {
 }
 
 with_builder! { |market_data|
+    #[skip_serializing_none]
+    #[serde_as]
     #[derive(Clone, Debug, Serialize, Deserialize)]
     pub struct GetHistoricalAuctions {
+        #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
         pub symbols: Vec<String>,
         pub start: Option<NaiveDate>,
         pub end: Option<NaiveDate>,
-        pub limit: i64,
+        pub limit: Option<i64>,
         pub asof: Option<NaiveDateTime>,
         pub feed: StockFeed,
         pub currency: Option<String>,
@@ -42,11 +45,11 @@ impl PaginationEndpoint for GetHistoricalAuctions {
     ) -> reqwest::RequestBuilder {
         let mut builder = Endpoint::configure(self, request).query(&[(
             "limit",
-            (TryInto::<usize>::try_into(self.limit).unwrap()).max(page_size),
+            self.limit.and_then(|x| TryInto::<usize>::try_into(x).ok()).map(|x| x.max(page_size)),
         )]);
 
         if let Some(page_token) = page_token {
-            builder = builder.query(&[("page_tokn", page_token)]);
+            builder = builder.query(&[("page_token", page_token)]);
         }
 
         builder
@@ -63,10 +66,59 @@ impl PaginationEndpoint for GetHistoricalAuctions {
     }
 }
 
+with_builder! { |market_data|
+    #[serde_as]
+    #[skip_serializing_none]
+    #[derive(Clone, Debug, Serialize, Deserialize)]
+    pub struct GetHistoricalBars {
+        #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+        pub symbols: Vec<String>,
+        pub timeframe: Timeframe,
+        pub start: Option<NaiveDate>,
+        pub end: Option<NaiveDate>,
+        pub limit: Option<i64>,
+        pub adjustment: CorporateActionAdjustment,
+        pub asof: Option<NaiveDateTime>,
+        pub feed: StockFeed,
+        pub currency: Option<String>,
+        pub sort: Option<Sort>
+    }
+}
+
+// FIXME code duplication
+impl PaginationEndpoint for GetHistoricalBars {
+    type Item = HistoricalBar;
+    type Response = HistoricalBars;
+
+    fn configure(
+        &self,
+        request: reqwest::RequestBuilder,
+        page_size: usize,
+        page_token: Option<String>,
+    ) -> reqwest::RequestBuilder {
+        let mut builder = Endpoint::configure(self, request).query(&[(
+            "limit",
+            self.limit.and_then(|x| TryInto::<usize>::try_into(x).ok()).map(|x| x.max(page_size)),
+        )]);
+
+        if let Some(page_token) = page_token {
+            builder = builder.query(&[("page_token", page_token)]);
+        }
+
+        builder
+    }
+
+    fn next_page_token(&self, response: &Self::Response) -> Option<String> {
+        response.next_page_token.clone()
+    }
+
+    fn deserialize(
+        response: reqwest::Response,
+    ) -> impl Future<Output = Result<Self::Response, Error>> + 'static {
+        <Self as Endpoint>::deserialize(response)
+    }
+}
 endpoint! {
-    impl GET "/v2/stocks/auctions" = GetHistoricalAuctions => HistoricalAuctions { |this, request|
-        request
-            .query(this)
-            .query(&[("symbols", this.symbols.join(","))])
-    };
+    impl GET "/v2/stocks/auctions" = GetHistoricalAuctions => HistoricalAuctions { |this, request| request.query(this) };
+    impl GET "/v2/stocks/bars" = GetHistoricalBars => HistoricalBars { |this, request| request.query(this) };
 }

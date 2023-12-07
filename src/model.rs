@@ -1,7 +1,7 @@
 //! This module defines all the Alpaca APIs' data types.
 use std::fmt::Display;
 
-use chrono::{DateTime, Utc, NaiveDateTime, NaiveDate};
+use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
 
@@ -544,7 +544,7 @@ pub enum OrderAmount {
 pub struct HistoricalAuctions {
     pub next_page_token: Option<String>,
     pub currency: Option<String>,
-    pub auctions: Vec<HistoricalAuction>
+    pub auctions: Vec<HistoricalAuction>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -558,7 +558,7 @@ pub struct SingleAuction {
     #[serde(rename = "s")]
     pub size: Option<i64>,
     #[serde(rename = "c")]
-    pub condition: String
+    pub condition: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -568,5 +568,112 @@ pub struct HistoricalAuction {
     #[serde(rename = "o")]
     pub opening: Vec<SingleAuction>,
     #[serde(rename = "c")]
-    pub closing: Vec<SingleAuction>
+    pub closing: Vec<SingleAuction>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Timeframe {
+    Minutes(u8),
+    Hours(u8),
+    Day,
+    Week,
+    Months(u8),
+}
+
+use serde_with::{DeserializeAs, SerializeAs};
+
+impl Serialize for Timeframe {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        DisplayFromStr::serialize_as(self, serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for Timeframe {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::de::Deserializer<'de>,
+    {
+        DisplayFromStr::deserialize_as(deserializer)
+    }
+}
+
+impl Display for Timeframe {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Minutes(minutes) => write!(f, "{minutes}T"),
+            Self::Hours(hours) => write!(f, "{hours}H"),
+            Self::Day => write!(f, "1D"),
+            Self::Week => write!(f, "1W"),
+            Self::Months(months) => write!(f, "{months}M"),
+        }
+    }
+}
+
+impl std::str::FromStr for Timeframe {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        fn number(s: &str) -> Result<u8, &'static str> {
+            if s.chars().nth(1).ok_or("no characters")?.is_ascii_digit() {
+                &s[..=1]
+            } else {
+                &s[..1]
+            }
+            .parse::<u8>()
+            .map_err(|_| "invalid number")
+        }
+
+        Ok(match s.chars().last().ok_or("no characters")? {
+            // Min / T
+            'T' | 'n' => Self::Minutes(number(s)?),
+            // Hour / H
+            'H' | 'r' => Self::Hours(number(s)?),
+            // Day / D
+            'D' | 'y' => Self::Day,
+            // Week / W
+            'W' | 'k' => Self::Week,
+            // Month / M
+            'M' | 'h' => Self::Months(number(s)?),
+            _ => return Err("invalid ending character")
+        })
+    }
+}
+
+// TODO explain
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum CorporateActionAdjustment {
+    Raw,
+    Split,
+    Dividend,
+    All
+}
+
+#[derive(Default, Debug, Deserialize, Serialize, Clone, PartialEq)]
+pub struct HistoricalBars {
+    pub bars: Vec<HistoricalBar>,
+    pub next_page_token: Option<String>,
+    pub currency: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+pub struct HistoricalBar {
+    #[serde(rename = "t")]
+    pub timestamp: NaiveDateTime,
+    #[serde(rename = "o")]
+    pub opening_price: f64,
+    #[serde(rename = "h")]
+    pub high_price: f64,
+    #[serde(rename = "l")]
+    pub low_price: f64,
+    #[serde(rename = "c")]
+    pub closing_price: f64,
+    #[serde(rename = "v")]
+    pub volume: i64,
+    #[serde(rename = "n")]
+    pub trade_count: i64,
+    #[serde(rename = "vw")]
+    pub avg_vol_weighted: f64
 }
