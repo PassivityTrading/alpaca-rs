@@ -363,10 +363,15 @@ macro_rules! with_builder {
         }
     };
     (@mode_marker $name:ident) => {};
+    (@mode_marker $name:ident market_data) => {
+        impl $crate::api::market_data::MarketDataEndpoint for $name {}
+        impl TradingEndpoint for $name {}
+    };
     (@mode_marker $name:ident account) => { with_builder!(@mode_marker $name broker); };
     (@mode_marker $name:ident broker) => { impl BrokerEndpoint for $name {} };
     (@mode_marker $name:ident trading) => { impl TradingEndpoint for $name {} };
     (@mode) => { with_builder!(@mode trading) };
+    (@mode market_data) => { TradingClient };
     (@mode trading) => { TradingClient };
     (@mode broker) => { BrokerClient };
     (@mode account) => { AccountView<'a> };
@@ -437,4 +442,5 @@ pub mod prelude {
 /// Required for pagination, as it needs the last item's ID.
 pub trait Identifiable {
     fn id(&self) -> String;
+    fn next_page_token(&self) -> Option<String> { Some(self.id()) }
 }

@@ -1,7 +1,7 @@
 //! This module defines all the Alpaca APIs' data types.
 use std::fmt::Display;
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Utc, NaiveDateTime, NaiveDate};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
 
@@ -540,3 +540,33 @@ pub enum OrderAmount {
     Notional(#[serde_as(as = "DisplayFromStr")] f64),
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
+pub struct HistoricalAuctions {
+    pub next_page_token: Option<String>,
+    pub currency: Option<String>,
+    pub auctions: Vec<HistoricalAuction>
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+pub struct SingleAuction {
+    #[serde(rename = "t")]
+    pub timestamp: NaiveDateTime,
+    #[serde(rename = "x")]
+    pub exchange_code: String,
+    #[serde(rename = "p")]
+    pub price: f64,
+    #[serde(rename = "s")]
+    pub size: Option<i64>,
+    #[serde(rename = "c")]
+    pub condition: String
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+pub struct HistoricalAuction {
+    #[serde(rename = "d")]
+    pub date: NaiveDate,
+    #[serde(rename = "o")]
+    pub opening: Vec<SingleAuction>,
+    #[serde(rename = "c")]
+    pub closing: Vec<SingleAuction>
+}
