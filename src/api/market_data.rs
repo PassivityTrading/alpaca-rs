@@ -1,6 +1,8 @@
 use super::*;
 
 mod stock;
+#[cfg(feature = "market-data-live")]
+pub mod live;
 
 pub use stock::*;
 
