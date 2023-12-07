@@ -685,3 +685,19 @@ pub struct LatestBars {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub currency: Option<String>,
 }
+
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash, derive_more::Display)]
+pub enum TickType {
+    #[display(fmt = "trade")]
+    Trade,
+    #[display(fmt = "quote")]
+    Quote
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum Tape {
+    A,
+    B,
+    C
+}

@@ -45,7 +45,9 @@ impl PaginationEndpoint for GetHistoricalAuctions {
     ) -> reqwest::RequestBuilder {
         let mut builder = Endpoint::configure(self, request).query(&[(
             "limit",
-            self.limit.and_then(|x| TryInto::<usize>::try_into(x).ok()).map(|x| x.max(page_size)),
+            self.limit
+                .and_then(|x| TryInto::<usize>::try_into(x).ok())
+                .map(|x| x.max(page_size)),
         )]);
 
         if let Some(page_token) = page_token {
@@ -98,7 +100,9 @@ impl PaginationEndpoint for GetHistoricalBars {
     ) -> reqwest::RequestBuilder {
         let mut builder = Endpoint::configure(self, request).query(&[(
             "limit",
-            self.limit.and_then(|x| TryInto::<usize>::try_into(x).ok()).map(|x| x.max(page_size)),
+            self.limit
+                .and_then(|x| TryInto::<usize>::try_into(x).ok())
+                .map(|x| x.max(page_size)),
         )]);
 
         if let Some(page_token) = page_token {
@@ -130,8 +134,23 @@ with_builder! { |market_data|
     }
 }
 
+with_builder! { |market_data|
+    #[skip_serializing_none]
+    #[derive(Clone, Debug, Serialize, Deserialize)]
+    pub struct ConditionCodes {
+        pub tick_type: TickType,
+        pub tape: Tape,
+    }
+}
+
+#[derive(Default, Clone, Debug, Serialize, Deserialize, Copy, PartialEq, Eq, Hash)]
+pub struct ExchangeCodes;
+
 endpoint! {
     impl GET "/v2/stocks/auctions" = GetHistoricalAuctions => HistoricalAuctions { |this, request| request.query(this) };
     impl GET "/v2/stocks/bars" = GetHistoricalBars => HistoricalBars { |this, request| request.query(this) };
     impl GET "/v2/stocks/bars/latest" = GetLatestBars => LatestBars { |this, request| request.query(this) };
+    impl GET (|Self { tick_type, .. }| format!("/v2/stocks/meta/conditions/{tick_type}")) = ConditionCodes => HashMap<String, String> { |this, request| request.query(&[("tape", this.tape)]) };
+    impl GET "/v2/stocks/meta/exchanges" = ExchangeCodes => HashMap<String, String>
+        | market_data;
 }

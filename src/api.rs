@@ -16,3 +16,4 @@ extern crate chrono;
 
 use serde::{Deserialize, Serialize};
 use serde_with::{*, formats::*};
+use std::collections::HashMap;
