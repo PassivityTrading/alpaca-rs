@@ -175,6 +175,18 @@ with_builder! { |market_data|
     }
 }
 
+// with_builder! { |market_data|
+    #[skip_serializing_none]
+    #[serde_as]
+    #[derive(Clone, Debug, Serialize, Deserialize)]
+    pub struct Snapshots {
+        #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+        pub symbols: Vec<String>,
+        pub feed: StockFeed,
+        pub currency: Option<String>,
+    }
+// }
+
 endpoint! {
     impl GET "/v2/stocks/auctions" = GetHistoricalAuctions => HistoricalAuctions { |this, request| request.query(this) };
     impl GET "/v2/stocks/bars" = GetHistoricalBars => HistoricalBars { |this, request| request.query(this) };
