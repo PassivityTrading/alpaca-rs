@@ -18,12 +18,16 @@
 use std::{borrow::Cow, future::Future, ops::Deref};
 
 use base64::Engine;
+use chrono::{Utc, NaiveDate};
 use model::Account;
 use reqwest::{
     header::{HeaderMap, AUTHORIZATION},
     Method, Url,
 };
 use serde::de::DeserializeOwned;
+
+type Date = NaiveDate;
+type DateTime<Tz = Utc> = chrono::DateTime<Tz>;
 
 pub mod api;
 pub mod model;
@@ -177,10 +181,7 @@ impl<'a> AccountView<'a> {
         Ok(())
     }
 
-    pub async fn execute<T: Endpoint + AccountEndpoint>(
-        &self,
-        endpoint: T,
-    ) -> Result<T::Result> {
+    pub async fn execute<T: Endpoint + AccountEndpoint>(&self, endpoint: T) -> Result<T::Result> {
         self.client
             .execute_with_account(endpoint, &self.data.id)
             .await
@@ -442,5 +443,7 @@ pub mod prelude {
 /// Required for pagination, as it needs the last item's ID.
 pub trait Identifiable {
     fn id(&self) -> String;
-    fn next_page_token(&self) -> Option<String> { Some(self.id()) }
+    fn next_page_token(&self) -> Option<String> {
+        Some(self.id())
+    }
 }

@@ -1,7 +1,8 @@
 //! This module defines all the Alpaca APIs' data types.
+use super::*;
+
 use std::fmt::Display;
 
-use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
 
@@ -56,7 +57,7 @@ pub struct Account {
     pub status: AccountStatus,
     pub crypto_status: AccountStatus,
     pub currency: String,
-    pub created_at: DateTime<Utc>,
+    pub created_at: DateTime,
     pub last_equity: String,
     pub enabled_assets: Vec<String>,
     pub contact: Contact,
@@ -338,8 +339,8 @@ pub enum BankRelationshipStatus {
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct BankRelationship {
     pub id: String,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: DateTime,
+    pub updated_at: DateTime,
     pub account_id: String,
     pub status: BankRelationshipStatus,
     pub name: String,
@@ -375,8 +376,8 @@ pub enum BankAccountType {
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct AchRelationship {
     pub id: String,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: DateTime,
+    pub updated_at: DateTime,
     pub account_id: String,
     pub status: AchRelationshipStatus,
     pub account_owner_name: String,
@@ -443,15 +444,15 @@ pub struct Transfer {
     #[serde_as(as = "DisplayFromStr")]
     pub amount: f64,
     pub direction: Direction,
-    pub created_at: DateTime<Utc>,
+    pub created_at: DateTime,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub updated_at: Option<DateTime<Utc>>,
+    pub updated_at: Option<DateTime>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub expires_at: Option<DateTime<Utc>>,
+    pub expires_at: Option<DateTime>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub additional_information: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub hold_until: Option<DateTime<Utc>>,
+    pub hold_until: Option<DateTime>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub instant_amount: Option<String>,
 }
@@ -550,7 +551,7 @@ pub struct HistoricalAuctions {
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct SingleAuction {
     #[serde(rename = "t")]
-    pub timestamp: NaiveDateTime,
+    pub timestamp: DateTime,
     #[serde(rename = "x")]
     pub exchange_code: String,
     #[serde(rename = "p")]
@@ -564,7 +565,7 @@ pub struct SingleAuction {
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct HistoricalAuction {
     #[serde(rename = "d")]
-    pub date: NaiveDate,
+    pub date: Date,
     #[serde(rename = "o")]
     pub opening: Vec<SingleAuction>,
     #[serde(rename = "c")]
@@ -662,7 +663,7 @@ pub struct HistoricalBars {
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct HistoricalBar {
     #[serde(rename = "t")]
-    pub timestamp: NaiveDateTime,
+    pub timestamp: DateTime,
     #[serde(rename = "o")]
     pub opening_price: f64,
     #[serde(rename = "h")]
@@ -700,4 +701,59 @@ pub enum Tape {
     A,
     B,
     C
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum QuoteZone {
+    /// NY stock exchange
+    #[serde(rename = "A")]
+    NYSE,
+    /// NYSE Arca, Bats, IEX and other regional exchanges
+    #[serde(rename = "B")]
+    Regional,
+    /// The NASDAQ exchange
+    #[serde(rename = "C")]
+    Nasdaq,
+    // TODO explain
+    /// OTC
+    #[serde(rename = "O")]
+    Otc
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+pub struct Quote {
+    #[serde(rename = "t")]
+    pub timestamp: DateTime,
+    #[serde(rename = "bx")]
+    pub bid_exchange: String,
+    #[serde(rename = "bp")]
+    pub bid_price: f64,
+    #[serde(rename = "bs")]
+    pub bid_size: u32,
+    #[serde(rename = "ax")]
+    pub ask_exchange: String,
+    #[serde(rename = "ap")]
+    pub ask_price: f64,
+    #[serde(rename = "as")]
+    pub ask_size: u32,
+    #[serde(rename = "c")]
+    pub condition_flags: Vec<String>,
+    // TODO(doc): is the name `zone` correct for `z`?
+    #[serde(rename = "z")]
+    pub zone: QuoteZone,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+pub struct HistoricalQuotes {
+    pub quotes: Vec<Quote>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub currency: Option<String>,
+    pub next_page_token: Option<String>
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+pub struct LatestQuotes {
+    pub quotes: Vec<Quote>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub currency: Option<String>,
 }
