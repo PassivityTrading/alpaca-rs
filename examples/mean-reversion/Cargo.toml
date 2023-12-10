@@ -1,0 +1,12 @@
+[package]
+name = "mean-reversion"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+actix = "0.13.1"
+actix-rt = "2.9.0"
+actix-web = "4.4.0"
+alpaca-rs = { path = "../..", features = ["tokio"] }
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = [ "env-filter" ] }
