@@ -103,7 +103,7 @@ impl Service {
 
                     actix_rt::time::sleep(till_close.to_std().unwrap()).await;
 
-                    info!("Market closed for this day. Waiting for the next trading day. Have a good night.");
+                    info!("Market closed for this day. Have a good night.");
 
                     continue 'main;
                 } else {
