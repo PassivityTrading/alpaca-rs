@@ -109,6 +109,8 @@ impl Service {
                 } else {
                     self.rebalance().await?;
                 }
+
+                actix_rt::time::sleep(Duration::from_secs(60)).await;
             }
         }
     }

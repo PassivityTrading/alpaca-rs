@@ -12,7 +12,7 @@ with_builder! { |trading|
         /// Buy or sell.
         pub side: OrderSide,
         /// Order type. Includes market, limit, stop, etc. orders.
-        #[serde(flatten, rename = "type")]
+        #[serde(flatten)]
         pub kind: OrderType,
         // TODO explain
         pub time_in_force: OrderTif,
@@ -35,5 +35,25 @@ with_builder! { |trading|
 
 endpoint! {
     impl POST "/v2/orders" = CreateOrder => Order { |this, request| request.json(this) };
-    impl DELETE (|Self { order_id }| format!("/v2/orders/{order_id}")) = CancelOrder;
+}
+
+impl Endpoint for CancelOrder {
+    type Result = ();
+    fn url(&self) -> Cow<'static, str> {
+        Cow::Owned(format!("/v2/orders/{}", self.order_id))
+    }
+    fn method(&self) -> Method {
+        Method::DELETE
+    }
+    fn configure(&self, request: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+        request
+    }
+    fn deserialize(
+        response: reqwest::Response,
+    ) -> impl Future<Output = Result<Self::Result>> + 'static {
+        async move {
+            response.error_for_status()?;
+            Ok(())
+        }
+    }
 }

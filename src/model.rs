@@ -227,7 +227,7 @@ pub enum OrderSide {
 
 #[serde_as]
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Default)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "snake_case", tag = "type")]
 pub enum OrderType {
     #[default]
     Market,
@@ -264,7 +264,7 @@ pub struct Order {
     pub symbol: String,
     pub status: OrderStatus,
     pub side: OrderSide,
-    #[serde(rename = "type")]
+    #[serde(rename = "type", flatten)]
     pub kind: OrderType,
 }
 

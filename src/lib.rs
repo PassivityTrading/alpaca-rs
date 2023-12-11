@@ -323,8 +323,8 @@ impl TradingClient {
         headers
     }
 
-    pub async fn execute<T: Endpoint + TradingEndpoint + std::fmt::Debug>(&self, endpoint: T) -> Result<T::Result> {
-        trace!("[trading] running {endpoint:?}");
+    pub async fn execute<T: Endpoint + TradingEndpoint + serde::ser::Serialize + std::fmt::Debug>(&self, endpoint: T) -> Result<T::Result> {
+        trace!("[trading] running {endpoint:?} = {}", serde_json::to_string(&endpoint)?);
         let request = endpoint
             .configure(self.reqwest.request(
                 endpoint.method(),
