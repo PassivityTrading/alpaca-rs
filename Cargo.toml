@@ -23,3 +23,7 @@ tracing = "0.1"
 [features]
 market-data-live = ["dep:async-tungstenite"]
 tokio = ["async-tungstenite?/tokio", "dep:tokio"]
+
+[workspace]
+members = [".", "examples/mean-reversion"]
+resolver = "2"

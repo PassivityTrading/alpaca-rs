@@ -309,7 +309,7 @@ impl TradingClient {
             "Waiting for market opening - {}h {}m left (until {})",
             wait.num_hours(),
             wait.num_minutes() - (wait.num_hours() * 60),
-            clock.next_open.naive_local()
+            clock.next_open.naive_utc()
         );
         tokio::time::sleep(wait.to_std().expect("duration to be non-negative")).await;
 

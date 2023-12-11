@@ -27,6 +27,7 @@ struct Service {
 
 impl Service {
     async fn run(mut self) -> Result<()> {
+        info!("Starting mean-reversion algorithm, will be trading {}, moving average each {} minutes", self.stock, self.minutes);
         'main: loop {
             if self.wait_for_open {
                 info!("Waiting for market opening...");
@@ -109,7 +110,6 @@ impl Service {
                     self.rebalance().await?;
                 }
             }
-
         }
     }
 
@@ -229,8 +229,6 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
         .init();
-
-    info!("Starting mean-reversion algorithm");
 
     Service {
         alpaca: TradingClient::new_paper(TradingAuth {

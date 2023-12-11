@@ -56,19 +56,11 @@ pub enum AccountType {
 pub struct Account {
     pub id: String,
     pub account_number: String,
-    pub account_type: AccountType,
     pub status: AccountStatus,
     pub crypto_status: AccountStatus,
     pub currency: String,
     pub created_at: DateTime,
     pub last_equity: String,
-    pub enabled_assets: Vec<String>,
-    pub contact: Contact,
-    pub identity: Identity,
-    pub disclosures: Disclosures,
-    pub documents: Vec<Document>,
-    pub agreements: Vec<Agreement>,
-    pub trusted_contact: TrustedContact,
     #[serde_as(as = "DisplayFromStr")]
     pub portfolio_value: f64,
     #[serde_as(as = "DisplayFromStr")]
@@ -227,6 +219,7 @@ impl OrderStatus {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
+#[serde(rename_all = "lowercase")]
 pub enum OrderSide {
     Buy,
     Sell,
@@ -234,6 +227,7 @@ pub enum OrderSide {
 
 #[serde_as]
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Default)]
+#[serde(rename_all = "snake_case")]
 pub enum OrderType {
     #[default]
     Market,

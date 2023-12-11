@@ -30,18 +30,18 @@ with_builder! { |account|
 }
 
 endpoint! {
-    impl GET "/positions" = GetOpenPositions => Vec<OpenPosition>
+    impl GET "/v2/positions" = GetOpenPositions => Vec<OpenPosition>
     | broker
     | trading
     | account;
-    impl GET (|Self { symbol_or_asset_id }| format!("/positions/{symbol_or_asset_id}")) = GetOpenPosition => OpenPosition
+    impl GET (|Self { symbol_or_asset_id }| format!("/v2/positions/{symbol_or_asset_id}")) = GetOpenPosition => OpenPosition
     | trading
     | account;
-    impl DELETE "/positions" = CloseAllPositions { |this, request| request.query(this) }
+    impl DELETE "/v2/positions" = CloseAllPositions { |this, request| request.query(this) }
     | trading
     | account;
     impl DELETE
-        (|Self { symbol_or_asset_id, .. }| format!("/positions/{symbol_or_asset_id}"))
+        (|Self { symbol_or_asset_id, .. }| format!("/v2/positions/{symbol_or_asset_id}"))
         = ClosePosition { |this, request|
             request.query(&[("qty", this.qty), ("percentage", this.percentage)])
         }

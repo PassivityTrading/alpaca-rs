@@ -57,10 +57,10 @@ impl TradingClient {
 }
 
 endpoint! {
-    impl GET "/account" = GetAccount => Account
+    impl GET "/v2/account" = GetAccount => Account
     | trading
     | broker
-    | account (|_, account_id| format!("/accounts/{}", account_id));
+    | account (|_, account_id| format!("/v2/accounts/{}", account_id));
     impl GET "/v2/clock" = GetClock => Clock
     | trading
     | broker;
