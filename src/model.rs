@@ -797,3 +797,47 @@ pub struct CalendarDay {
     #[serde_as(as = "DisplayFromStr")]
     pub settlement_date: Date,
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct HistoricalTrade {
+    #[serde(rename = "t")]
+    pub timestamp: DateTime,
+    #[serde(rename = "x")]
+    pub exchange_code: String,
+    #[serde(rename = "p")]
+    pub price: f64,
+    #[serde(rename = "s")]
+    pub size: u32,
+    #[serde(rename = "i")]
+    pub trade_id: i64,
+    #[serde(rename = "c")]
+    pub condition_flags: Vec<String>,
+    #[serde(rename = "z")]
+    pub tape: String
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Snapshot {
+    pub daily_bar: HistoricalBar,
+    pub latest_quote: Quote,
+    pub latest_trade: HistoricalTrade,
+    pub minute_bar: HistoricalBar,
+    #[serde(rename = "prev_daily_bar")]
+    pub previous_daily_bar: HistoricalBar,
+}
+
+#[derive(Default, Debug, Deserialize, Serialize, Clone, PartialEq)]
+pub struct HistoricalTrades {
+    pub trades: Vec<HistoricalTrade>,
+    pub next_page_token: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub currency: Option<String>,
+}
+
+#[derive(Default, Debug, Deserialize, Serialize, Clone, PartialEq)]
+pub struct LatestTrades {
+    pub trades: Vec<HistoricalTrade>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub currency: Option<String>,
+}

@@ -175,17 +175,82 @@ with_builder! { |market_data|
     }
 }
 
-// with_builder! { |market_data|
+with_builder! { |market_data|
     #[skip_serializing_none]
     #[serde_as]
     #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct Snapshots {
+    pub struct GetSnapshots {
         #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
         pub symbols: Vec<String>,
-        pub feed: StockFeed,
+        pub feed: Option<StockFeed>,
         pub currency: Option<String>,
     }
-// }
+}
+
+with_builder! { |market_data|
+    #[skip_serializing_none]
+    #[serde_as]
+    #[derive(Clone, Debug, Serialize, Deserialize)]
+    pub struct GetHistoricalTrades {
+        #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+        pub symbols: Vec<String>,
+        pub start: Option<DateTime>,
+        pub end: Option<DateTime>,
+        pub limit: Option<i64>,
+        pub asof: Option<DateTime>,
+        pub feed: Option<StockFeed>,
+        pub currency: Option<String>,
+        pub sort: Option<Sort>
+    }
+}
+
+// FIXME code duplication
+impl PaginationEndpoint for GetHistoricalTrades {
+    type Item = HistoricalTrade;
+    type Response = HistoricalTrades;
+
+    fn configure(
+        &self,
+        request: reqwest::RequestBuilder,
+        page_size: usize,
+        page_token: Option<String>,
+    ) -> reqwest::RequestBuilder {
+        let mut builder = Endpoint::configure(self, request).query(&[(
+            "limit",
+            self.limit
+                .and_then(|x| TryInto::<usize>::try_into(x).ok())
+                .map(|x| x.max(page_size)),
+        )]);
+
+        if let Some(page_token) = page_token {
+            builder = builder.query(&[("page_token", page_token)]);
+        }
+
+        builder
+    }
+
+    fn next_page_token(&self, response: &Self::Response) -> Option<String> {
+        response.next_page_token.clone()
+    }
+
+    fn deserialize(
+        response: reqwest::Response,
+    ) -> impl Future<Output = Result<Self::Response, Error>> + 'static {
+        <Self as Endpoint>::deserialize(response)
+    }
+}
+
+with_builder! { |market_data|
+    #[skip_serializing_none]
+    #[serde_as]
+    #[derive(Clone, Debug, Serialize, Deserialize)]
+    pub struct GetLatestTrades {
+        #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+        pub symbols: Vec<String>,
+        pub feed: Option<StockFeed>,
+        pub currency: Option<String>,
+    }
+}
 
 endpoint! {
     impl GET "/v2/stocks/auctions" = GetHistoricalAuctions => HistoricalAuctions { |this, request| request.query(this) };
@@ -196,4 +261,7 @@ endpoint! {
         | market_data;
     impl GET "/v2/stocks/quotes" = GetHistoricalQuotes => HistoricalQuotes { |this, request| request.query(this) };
     impl GET "/v2/stocks/quotes/latest" = GetLatestQuotes => LatestQuotes { |this, request| request.query(this) };
+    impl GET "/v2/stocks/snapshots" = GetSnapshots => Vec<Snapshot> { |this, request| request.query(this) };
+    impl GET "/v2/stocks/trades" = GetHistoricalTrades => HistoricalTrades { |this, request| request.query(this) };
+    impl GET "/v2/stocks/trades/latest" = GetLatestTrades => LatestTrades { |this, request| request.query(this) };
 }
