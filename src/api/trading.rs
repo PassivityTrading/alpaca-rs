@@ -41,12 +41,12 @@ impl TradingClient {
             self,
             GetCalendar {
                 start: if let Bound::Included(start) = date.start_bound() {
-                    Some(start.clone())
+                    Some(*start)
                 } else {
                     None
                 },
                 end: if let Bound::Included(end) = date.end_bound() {
-                    Some(end.clone())
+                    Some(*end)
                 } else {
                     None
                 },
