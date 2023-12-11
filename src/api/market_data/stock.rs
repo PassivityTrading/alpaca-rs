@@ -71,13 +71,13 @@ impl PaginationEndpoint for GetHistoricalAuctions {
 with_builder! { |market_data|
     #[serde_as]
     #[skip_serializing_none]
-    #[derive(Clone, Debug, Serialize, Deserialize)]
+    #[derive(Clone, Debug, Serialize, Deserialize, Default)]
     pub struct GetHistoricalBars {
         #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
         pub symbols: Vec<String>,
         pub timeframe: Timeframe,
-        pub start: Option<Date>,
-        pub end: Option<Date>,
+        pub start: Option<NaiveDate>,
+        pub end: Option<NaiveDate>,
         pub limit: Option<i64>,
         pub adjustment: CorporateActionAdjustment,
         pub asof: Option<DateTime>,

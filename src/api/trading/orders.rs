@@ -25,7 +25,14 @@ with_builder! { |trading|
         pub order_class: OrderClass
     }
 }
+with_builder! { |trading|
+    #[derive(Serialize, Deserialize, Debug, Clone)]
+    pub struct CancelOrder {
+        pub order_id: String
+    }
+}
 
 endpoint! {
     impl POST "/orders" = CreateOrder => Order { |this, request| request.json(this) };
+    impl DELETE (|Self { order_id }| format!("/orders/{order_id}")) = CancelOrder;
 }

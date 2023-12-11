@@ -15,10 +15,12 @@
 #![forbid(clippy::missing_safety_doc)]
 // #![deny(missing_docs)]
 
+use api::market_data::MarketDataEndpoint;
 use std::{borrow::Cow, future::Future, ops::Deref};
+use tracing::log::*;
 
 use base64::Engine;
-use chrono::{Utc, NaiveDate};
+use chrono::{NaiveDate, Utc};
 use model::Account;
 use reqwest::{
     header::{HeaderMap, AUTHORIZATION},
@@ -28,6 +30,7 @@ use serde::de::DeserializeOwned;
 
 type Date = NaiveDate;
 type DateTime<Tz = Utc> = chrono::DateTime<Tz>;
+pub use chrono;
 
 pub mod api;
 pub mod model;
@@ -68,6 +71,7 @@ const BROKER_SANDBOX: &str = "https://broker-api.sandbox.alpaca.markets/v1";
 /// The live url for the Market Data API
 const MARKET_PROD: &str = "https://data.alpaca.markets";
 /// The sandbox url for the Market Data API
+#[allow(dead_code)] // FIXME
 const MARKET_SANDBOX: &str = "https://data.sandbox.alpaca.markets";
 
 impl BrokerClient {
@@ -260,7 +264,8 @@ impl TradingClient {
         Self {
             reqwest: reqwest::Client::new(),
             base_url: TRADING_PAPER.parse().unwrap(),
-            market_data_base_url: MARKET_SANDBOX.parse().unwrap(),
+            // FIXME for some reason sandbox just refuses to work?
+            market_data_base_url: MARKET_PROD.parse().unwrap(),
             auth,
         }
     }
@@ -287,6 +292,30 @@ impl TradingClient {
         Self { reqwest, ..self }
     }
 
+    #[cfg(feature = "tokio")]
+    /// Wait for the market to open.
+    /// If the market is open, this will return immediately (excluding getting the clock data from
+    /// Alpaca).
+    pub async fn await_market_open(&self) -> Result<()> {
+        trace!("Awaiting market opening.");
+        let clock = self.get_clock().await?;
+        if clock.is_open {
+            trace!("Market is already open, not waiting.");
+            return Ok(());
+        }
+
+        let wait = clock.next_open - clock.timestamp;
+        trace!(
+            "Waiting for market opening - {}h {}m left (until {})",
+            wait.num_hours(),
+            wait.num_minutes() - (wait.num_hours() * 60),
+            clock.next_open.naive_local()
+        );
+        tokio::time::sleep(wait.to_std().expect("duration to be non-negative")).await;
+
+        Ok(())
+    }
+
     fn auth_headers(&self) -> HeaderMap {
         let mut headers = HeaderMap::new();
         let _ = headers.insert("APCA-API-KEY-ID", self.auth.key.parse().unwrap());
@@ -294,13 +323,31 @@ impl TradingClient {
         headers
     }
 
-    pub async fn execute<T: Endpoint + TradingEndpoint>(&self, endpoint: T) -> Result<T::Result> {
+    pub async fn execute<T: Endpoint + TradingEndpoint + std::fmt::Debug>(&self, endpoint: T) -> Result<T::Result> {
+        trace!("[trading] running {endpoint:?}");
         let request = endpoint
             .configure(self.reqwest.request(
                 endpoint.method(),
                 endpoint.base_url(self).join(&endpoint.url()).unwrap(),
             ))
             .headers(self.auth_headers());
+
+        T::deserialize(request.send().await?).await
+    }
+
+    pub async fn execute_market<T: Endpoint + MarketDataEndpoint + std::fmt::Debug>(
+        &self,
+        endpoint: T,
+    ) -> Result<T::Result> {
+        trace!("[market_data] running {endpoint:?}");
+        let request = endpoint.configure(
+            self.reqwest
+                .request(
+                    endpoint.method(),
+                    endpoint.base_url(self).join(&endpoint.url()).unwrap(),
+                )
+                .headers(self.auth_headers()),
+        );
 
         T::deserialize(request.send().await?).await
     }

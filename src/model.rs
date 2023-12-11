@@ -1,8 +1,10 @@
 //! This module defines all the Alpaca APIs' data types.
 use super::*;
 
+use std::collections::HashMap;
 use std::fmt::Display;
 
+use chrono::NaiveTime;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
 
@@ -49,6 +51,7 @@ pub enum AccountType {
     DonorAdvised,
 }
 
+#[serde_as]
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct Account {
     pub id: String,
@@ -66,6 +69,12 @@ pub struct Account {
     pub documents: Vec<Document>,
     pub agreements: Vec<Agreement>,
     pub trusted_contact: TrustedContact,
+    #[serde_as(as = "DisplayFromStr")]
+    pub portfolio_value: f64,
+    #[serde_as(as = "DisplayFromStr")]
+    pub cash: f64,
+    #[serde_as(as = "DisplayFromStr")]
+    pub buying_power: f64
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -257,6 +266,7 @@ pub enum TrailingStop {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Order {
+    pub id: String,
     pub symbol: String,
     pub status: OrderStatus,
     pub side: OrderSide,
@@ -489,7 +499,8 @@ pub struct OpenPosition {
     pub asset_marginable: Option<bool>,
     #[serde_as(as = "DisplayFromStr")]
     pub avg_entry_price: f64,
-    pub qty: String,
+    #[serde_as(as = "DisplayFromStr")]
+    pub qty: i64,
     pub side: Side,
     #[serde_as(as = "DisplayFromStr")]
     pub market_value: f64,
@@ -535,7 +546,7 @@ impl Display for SymbolOrAssetId {
 pub enum OrderAmount {
     #[serde(rename = "qty")]
     /// Number of shares.
-    Quantity(#[serde_as(as = "DisplayFromStr")] f64),
+    Quantity(#[serde_as(as = "DisplayFromStr")] i64),
     #[serde(rename = "notional")]
     /// Notional amount is the amount of stock in the currency of the account.
     Notional(#[serde_as(as = "DisplayFromStr")] f64),
@@ -572,10 +583,11 @@ pub struct HistoricalAuction {
     pub closing: Vec<SingleAuction>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Timeframe {
     Minutes(u8),
     Hours(u8),
+    #[default]
     Day,
     Week,
     Months(u8),
@@ -644,17 +656,19 @@ impl std::str::FromStr for Timeframe {
 }
 
 // TODO explain
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash)]
+#[serde(rename_all = "lowercase")]
 pub enum CorporateActionAdjustment {
     Raw,
     Split,
     Dividend,
+    #[default]
     All
 }
 
 #[derive(Default, Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct HistoricalBars {
-    pub bars: Vec<HistoricalBar>,
+    pub bars: HashMap<String, Vec<HistoricalBar>>,
     pub next_page_token: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub currency: Option<String>,
@@ -756,4 +770,36 @@ pub struct LatestQuotes {
     pub quotes: Vec<Quote>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub currency: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+pub struct Clock {
+    pub timestamp: DateTime,
+    pub is_open: bool,
+    pub next_open: DateTime,
+    pub next_close: DateTime
+}
+
+#[derive(Default, Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum DateType {
+    #[default]
+    Trading,
+    Settlement
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct Calendar(pub Vec<CalendarDay>);
+
+#[serde_as]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct CalendarDay {
+    #[serde_as(as = "DisplayFromStr")]
+    pub date: Date,
+    #[serde_as(as = "DisplayFromStr")]
+    pub open: NaiveTime,
+    #[serde_as(as = "DisplayFromStr")]
+    pub close: NaiveTime,
+    #[serde_as(as = "DisplayFromStr")]
+    pub settlement_date: Date,
 }
