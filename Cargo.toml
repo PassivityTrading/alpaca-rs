@@ -6,9 +6,7 @@ edition = "2021"
 [dependencies]
 base64 = "0.21.5"
 chrono = { version = "0.4.31", features = ["serde"] }
-miette = "5.10.0"
 paste = "1.0.14"
-reqwest = { version = "0.11.22", features = ["json"] }
 serde = { version = "1.0.193", features = ["derive", "rc"] }
 serde_json = "1.0.108"
 serde_with = { version = "3.4.0", features = ["chrono"] }
@@ -17,12 +15,13 @@ derive_more = "0.99"
 async-tungstenite = { version = "0.23.0", optional = true }
 # async-tungstenite backport
 futures = "0.3.28"
-tokio = { version = "1.35.0", features = ["time"], optional = true }
 tracing = { version = "0.1", features = ["log"] }
+acril = { git = "https://github.com/PassivityTrading/acril", features = ["http"] }
+async-std = "1.12.0"
 
 [features]
 market-data-live = ["dep:async-tungstenite"]
-tokio = ["async-tungstenite?/tokio", "dep:tokio"]
+tokio = ["async-tungstenite?/tokio", "async-std/tokio1"]
 default = []
 
 [workspace]
