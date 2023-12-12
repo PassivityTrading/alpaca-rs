@@ -26,8 +26,25 @@ struct Service {
 }
 
 impl Service {
+    async fn limit_order(&self, limit_price: f64, side: OrderSide, qty: i64) -> Result<Order> {
+        info!("Creating a {side} limit order (at ${limit_price}) for {qty} shares of {}", self.stock);
+
+        self.alpaca.execute(CreateOrder {
+            extended_hours: false,
+            amount: OrderAmount::Quantity(qty),
+            order_class: OrderClass::Simple,
+            symbol: self.stock.clone(),
+            kind: OrderType::Limit { limit_price },
+            side,
+            time_in_force: OrderTif::Day,
+            client_order_id: None,
+        }).await
+    }
     async fn run(mut self) -> Result<()> {
-        info!("Starting mean-reversion algorithm, will be trading {}, moving average each {} minutes", self.stock, self.minutes);
+        info!(
+            "Starting mean-reversion algorithm, will be trading {}, moving average each {} minutes",
+            self.stock, self.minutes
+        );
         'main: loop {
             if self.wait_for_open {
                 info!("Waiting for market opening...");
@@ -138,19 +155,19 @@ impl Service {
             .await?
             .bars
             .remove(&self.stock)
-            .unwrap();
+            .unwrap_or_default();
 
-        let current_price = bars.last().unwrap().closing_price;
+        let current_price = bars.last().map(|x| x.closing_price).unwrap_or_default();
         self.running_avg = 0.0;
         for bar in bars.iter() {
             self.running_avg += bar.closing_price;
         }
-        self.running_avg /= bars.len() as f64;
+        self.running_avg /= 20.0;
         if current_price > self.running_avg {
-            debug!("price was above running average, liquidating positions");
+            info!("price was above running average, liquidating positions");
             // liquidate our position if the price is above the running averange
             if pos_qty > 0 {
-                debug!("liquidating {pos_qty} positions at ${current_price} per share");
+                info!("liquidating {pos_qty} positions at ${current_price} per share");
 
                 self.last_order = Some(
                     self.alpaca
@@ -170,15 +187,21 @@ impl Service {
                 );
             }
         } else if current_price < self.running_avg {
+            info!("price below running average, rebalancing");
+
             let Account {
                 portfolio_value,
                 buying_power,
                 ..
             } = self.alpaca.execute(GetAccount).await?;
 
+            info!(%buying_power, %portfolio_value, "Got account data");
+
             let portfolio_share = ((self.running_avg - current_price) / current_price) * 200.0;
             let target_position_value = portfolio_value * portfolio_share;
             let mut amount_to_add = target_position_value - pos_value;
+
+            info!(%portfolio_share, %target_position_value, %amount_to_add, "Calculated rebalance values");
 
             if amount_to_add > 0.0 {
                 if amount_to_add > buying_power {
@@ -186,39 +209,13 @@ impl Service {
                 }
                 let qty_to_buy = (amount_to_add / current_price).floor() as i64;
                 self.last_order = Some(
-                    self.alpaca
-                        .execute(CreateOrder {
-                            amount: OrderAmount::Quantity(qty_to_buy),
-                            symbol: self.stock.clone(),
-                            side: OrderSide::Buy,
-                            kind: OrderType::Limit {
-                                limit_price: current_price,
-                            },
-                            order_class: OrderClass::Simple,
-                            client_order_id: None,
-                            extended_hours: false,
-                            time_in_force: OrderTif::Day,
-                        })
-                        .await?,
+                    self.limit_order(current_price, OrderSide::Buy, qty_to_buy).await?
                 );
             } else {
                 amount_to_add *= -1.0;
                 let qty_to_sell = ((amount_to_add / current_price).floor() as i64).max(pos_qty);
                 self.last_order = Some(
-                    self.alpaca
-                        .execute(CreateOrder {
-                            amount: OrderAmount::Quantity(qty_to_sell),
-                            symbol: self.stock.clone(),
-                            side: OrderSide::Sell,
-                            kind: OrderType::Limit {
-                                limit_price: current_price,
-                            },
-                            order_class: OrderClass::Simple,
-                            client_order_id: None,
-                            extended_hours: false,
-                            time_in_force: OrderTif::Day,
-                        })
-                        .await?,
+                    self.limit_order(current_price, OrderSide::Sell, qty_to_sell).await?
                 );
             }
         }

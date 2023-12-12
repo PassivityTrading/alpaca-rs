@@ -218,7 +218,7 @@ impl OrderStatus {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash, derive_more::Display)]
 #[serde(rename_all = "lowercase")]
 pub enum OrderSide {
     Buy,
@@ -268,7 +268,7 @@ pub struct Order {
     pub kind: OrderType,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash, Default, derive_more::Display)]
 #[serde(rename_all = "lowercase")]
 pub enum OrderTif {
     /// The order is good for the day, and it will be canceled
@@ -277,26 +277,31 @@ pub enum OrderTif {
     /// The order is only executed if the entire order quantity can
     /// be filled, otherwise the order is canceled.
     #[serde(rename = "fok")]
+    #[display(fmt = "fill or kill")]
     FillOrKill,
     /// The order requires all or part of the order to be executed
     /// immediately. Any unfilled portion of the order is canceled.
     #[serde(rename = "ioc")]
+    #[display(fmt = "immediate or cancel")]
     ImmediateOrCancel,
     /// The order is good until canceled.
     #[default]
     #[serde(rename = "gtc")]
+    #[display(fmt = "good till canceled")]
     GoodTillCanceled,
     /// This order is eligible to execute only in the market opening
     /// auction. Any unfilled orders after the open will be canceled.
     #[serde(rename = "opg")]
+    #[display(fmt = "until market open")]
     UntilMarketOpen,
     /// This order is eligible to execute only in the market closing
     /// auction. Any unfilled orders after the close will be canceled.
     #[serde(rename = "cls")]
+    #[display(fmt = "until market close")]
     UntilMarketClose,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash, Default, derive_more::Display)]
 #[serde(rename_all = "lowercase")]
 pub enum OrderClass {
     /// Any non-bracket order (i.e., regular market, limit, or stop loss
@@ -312,11 +317,13 @@ pub enum OrderClass {
     /// Such an order can be used to add two legs to an already filled
     /// order.
     #[serde(rename = "oco")]
+    #[display(fmt = "one cancels other")]
     OneCancelsOther,
     /// A one-triggers-other order that can either have a take-profit or
     /// stop-loss leg set. It essentially attached a single leg to an
     /// entry order.
     #[serde(rename = "oto")]
+    #[display(fmt = "one triggers other")]
     OneTriggersOther,
 }
 
@@ -536,12 +543,14 @@ impl Display for SymbolOrAssetId {
 
 /// Order amount (number of shares or dollar amount).
 #[serde_as]
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, PartialOrd)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, PartialOrd, derive_more::Display)]
 pub enum OrderAmount {
     #[serde(rename = "qty")]
+    #[display(fmt = "{_0} shares of")]
     /// Number of shares.
     Quantity(#[serde_as(as = "DisplayFromStr")] i64),
     #[serde(rename = "notional")]
+    #[display(fmt = "${_0} worth of")]
     /// Notional amount is the amount of stock in the currency of the account.
     Notional(#[serde_as(as = "DisplayFromStr")] f64),
 }
