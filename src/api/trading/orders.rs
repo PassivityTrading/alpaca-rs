@@ -1,14 +1,19 @@
 use super::*;
 
+#[with_builder(create_order)]
 /// Create an order.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, ClientEndpoint)]
+#[endpoint(Post(json) "/orders" in TradingClient -> Order)]
 pub struct CreateOrder {
     /// The symbol/ticker of the stock being traded.
+    #[required]
     pub symbol: String,
     /// Either the quantity or the dollar amount to trade.
+    #[required]
     #[serde(flatten)]
     pub amount: OrderAmount,
     /// Buy or sell.
+    #[required]
     pub side: OrderSide,
     /// Order type. Includes market, limit, stop, etc. orders.
     #[serde(flatten)]
@@ -47,8 +52,10 @@ impl std::fmt::Display for CreateOrder {
     }
 }
 
+#[with_builder(cancel_order)]
 #[derive(Serialize, Deserialize, Debug, Clone, ClientEndpoint)]
 #[endpoint(Delete(empty, empty) "/orders/{order_id}" in TradingClient)]
 pub struct CancelOrder {
+    #[required]
     pub order_id: String,
 }

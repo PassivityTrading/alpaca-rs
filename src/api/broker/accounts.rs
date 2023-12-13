@@ -58,13 +58,16 @@ impl HttpClientContext for AccountView {
     }
 }
 
+#[with_builder(get_account)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default, ClientEndpoint)]
 #[endpoint(Get(empty) (format!("/accounts/{}", client.id())) in AccountView -> Account)]
 pub struct GetAccount;
 
+#[with_builder(get_all_accounts)]
 #[derive(Debug, Clone, Serialize, Deserialize, Default, ClientEndpoint)]
 #[endpoint(Get(query) "/accounts" in BrokerClient -> Vec<SmallAccount>)]
 pub struct GetAllAccounts {
+    #[required]
     pub query: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created_after: Option<DateTime<Utc>>,
@@ -77,11 +80,15 @@ pub struct GetAllAccounts {
     pub entities: Vec<String>,
 }
 
+#[with_builder(create_account)]
 #[derive(Debug, Clone, Serialize, Deserialize, ClientEndpoint)]
 #[endpoint(Post "/accounts" in BrokerClient -> Account)]
 pub struct CreateAccount {
+    #[required]
     pub contact: Contact,
+    #[required]
     pub identity: Identity,
+    #[required]
     pub disclosures: Disclosures,
     pub agreements: Vec<Agreement>,
     pub documents: Vec<Document>,
@@ -89,15 +96,16 @@ pub struct CreateAccount {
     pub enabled_assets: Vec<String>,
 }
 
-// impl CreateAccountBuilder<'_> {
-//     /// Add a document to this builder.
-//     pub fn document(mut self, document: Document) -> Self {
-//         self.1.documents.push(document);
-//         self
-//     }
-// }
+impl CreateAccountBuilder<'_> {
+    /// Add a document to this builder.
+    pub fn document(mut self, document: Document) -> Self {
+        self.1.documents.push(document);
+        self
+    }
+}
 
 // FIXME inconsistent casing? snakecase everywhere except here
+#[with_builder(update_account)]
 #[derive(Default, Debug, Clone, Serialize, Deserialize, ClientEndpoint)]
 #[endpoint(Patch(json) (format!("/accounts/{}", client.id())) in AccountView -> Account)]
 #[serde(rename_all = "camelCase")]
@@ -111,30 +119,3 @@ pub struct UpdateAccount {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub trusted_contact: Option<TrustedContact>,
 }
-
-// impl BrokerClient {
-//     pub fn create_account(&self, contact: Contact, identity: Identity) -> CreateAccountBuilder {
-//         CreateAccountBuilder(
-//             self,
-//             CreateAccount {
-//                 contact,
-//                 identity,
-//                 disclosures: Default::default(),
-//                 agreements: vec![],
-//                 documents: vec![],
-//                 trusted_contact: Default::default(),
-//                 enabled_assets: vec![],
-//             },
-//         )
-//     }
-//
-//     pub fn get_all_accounts(&self) -> GetAllAccountsBuilder {
-//         GetAllAccountsBuilder(self, GetAllAccounts::default())
-//     }
-// }
-
-// impl AccountView<'_> {
-//     pub fn update(&self) -> UpdateAccountBuilder {
-//         UpdateAccountBuilder(self, UpdateAccount::default())
-//     }
-// }
