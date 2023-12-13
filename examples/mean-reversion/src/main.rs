@@ -1,23 +1,24 @@
 use std::time::Duration;
 
-use actix::prelude::*;
+use actix_rt::*;
 use alpaca_rs::{
     api::{
-        market_data::GetHistoricalBars,
-        trading::{CancelOrder, CreateOrder, GetAccount, GetOpenPosition},
+        market_data::{MarketDataClient, GetHistoricalBars},
+        trading::{CancelOrder, CreateOrder, GetAccount, GetOpenPosition, TradingAuth, TradingClient},
     },
     chrono::{self, Utc},
     model::{
         Account, OpenPosition, Order, OrderAmount, OrderClass, OrderSide, OrderTif, OrderType,
         SymbolOrAssetId, Timeframe,
     },
-    Result, TradingAuth, TradingClient,
+    Result
 };
 use tracing::*;
 use tracing_subscriber::EnvFilter;
 
 struct Service {
     alpaca: TradingClient,
+    market: MarketDataClient,
     wait_for_open: bool,
     stock: String,
     last_order: Option<Order>,
@@ -61,8 +62,8 @@ impl Service {
             let now_date = alpaca_rs::chrono::Utc::now().naive_utc().date();
 
             while self
-                .alpaca
-                .execute_market(GetHistoricalBars {
+                .market
+                .execute(GetHistoricalBars {
                     symbols: vec![self.stock.to_owned()],
                     timeframe: Timeframe::Minutes(1),
                     limit: Some(self.minutes.try_into().unwrap()),
@@ -142,11 +143,11 @@ impl Service {
             .execute(GetOpenPosition {
                 symbol_or_asset_id: SymbolOrAssetId::SymbolId(self.stock.clone()),
             })
-            .await?;
+            .await.unwrap_or_default();
 
         let bars = self
-            .alpaca
-            .execute_market(GetHistoricalBars {
+            .market
+            .execute(GetHistoricalBars {
                 symbols: vec![self.stock.clone()],
                 limit: self.minutes.try_into().ok(),
                 timeframe: Timeframe::Minutes(1),
@@ -170,20 +171,7 @@ impl Service {
                 info!("liquidating {pos_qty} positions at ${current_price} per share");
 
                 self.last_order = Some(
-                    self.alpaca
-                        .execute(CreateOrder {
-                            kind: OrderType::Limit {
-                                limit_price: current_price,
-                            },
-                            symbol: self.stock.clone(),
-                            side: OrderSide::Sell,
-                            amount: OrderAmount::Quantity(pos_qty),
-                            time_in_force: OrderTif::Day,
-                            extended_hours: false,
-                            client_order_id: None,
-                            order_class: OrderClass::Simple,
-                        })
-                        .await?,
+                    self.limit_order(current_price, OrderSide::Sell, pos_qty).await?
                 );
             }
         } else if current_price < self.running_avg {
@@ -228,12 +216,16 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
         .init();
+    let (key, secret) = 
+            (std::env::var("APCA_API_KEY").unwrap(),
+            std::env::var("APCA_SECRET_KEY").unwrap());
 
     Service {
         alpaca: TradingClient::new_paper(TradingAuth {
-            key: std::env::var("APCA_API_KEY").unwrap(),
-            secret: std::env::var("APCA_SECRET_KEY").unwrap(),
+            key: key.clone(),
+            secret: secret.clone()
         }),
+        market: MarketDataClient::new_live(TradingAuth { key, secret }),
         wait_for_open: !std::env::var("APCA_WAIT_OPEN").is_ok_and(|x| x == "0"),
         stock: std::env::var("APCA_MEANREV_STOCK").unwrap(),
         minutes: 20,

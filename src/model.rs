@@ -461,9 +461,10 @@ pub enum BankCodeType {
     Bic,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Default, Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
 #[serde(rename_all = "lowercase")]
 pub enum Side {
+    #[default]
     Long,
     Short,
 }
@@ -477,7 +478,7 @@ pub enum AssetClass {
 
 #[skip_serializing_none]
 #[serde_as]
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
 pub struct OpenPosition {
     pub asset_id: String,
     pub symbol: String,

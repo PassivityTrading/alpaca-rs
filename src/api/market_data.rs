@@ -18,10 +18,6 @@ const MARKET_SANDBOX: &str = "https://data.sandbox.alpaca.markets";
 #[must_use = "A client does not do anything unless you execute endpoints with it yourself"]
 pub struct MarketDataClient(HttpClient<super::trading::TraderMiddleware>);
 
-#[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, Hash, ClientEndpoint)]
-#[endpoint(Get "/v2/clock" in MarketDataClient -> Clock)]
-pub struct GetClock;
-
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash, ClientEndpoint)]
 #[endpoint(Get(query) "/v2/calendar" in MarketDataClient -> Calendar)]
 pub struct GetCalendar {
@@ -44,32 +40,6 @@ Self(HttpClient::new_with(TraderMiddleware(auth)).with_base_url(base_url))
         endpoint.run(self).await
     }
 
-    /// Wait for the market to open.
-    /// If the market is open, this will return immediately (excluding getting the clock data from
-    /// Alpaca).
-    pub async fn await_market_open(&self) -> Result<()> {
-        trace!("Awaiting market opening.");
-        let clock = self.get_clock().await?;
-        if clock.is_open {
-            trace!("Market is already open, not waiting.");
-            return Ok(());
-        }
-
-        let wait = clock.next_open - clock.timestamp;
-        trace!(
-            "Waiting for market opening - {}h {}m left (until {})",
-            wait.num_hours(),
-            wait.num_minutes() - (wait.num_hours() * 60),
-            clock.next_open.naive_utc()
-        );
-        async_std::task::sleep(wait.to_std().expect("duration to be non-negative")).await;
-
-        Ok(())
-    }
-
-    pub async fn get_clock(&self) -> Result<Clock> {
-        self.execute(GetClock).await
-    }
     pub async fn get_calendar(
         &self,
         date: impl RangeBounds<Date>,

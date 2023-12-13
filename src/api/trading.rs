@@ -31,7 +31,12 @@ impl Middleware for TraderMiddleware {
         request.append_header("APCA-API-KEY-ID", &self.0.key);
         request.append_header("APCA-API-SECRET-KEY", &self.0.secret);
 
-        Ok(NoMiddleware.call(request).await?)
+        trace!("{request:?}");
+
+        Ok(match NoMiddleware.call(request).await? {
+            res if res.status().is_success() => res,
+            mut other => return Err(http_types::Error::from_str(other.status(), format!("status was not successful: {other:?}, {}", other.body_string().await?)).into())
+        })
     }
 }
 
@@ -57,6 +62,33 @@ impl TradingClient {
         self.execute(GetAccount).await
     }
 
+    pub async fn get_clock(&self) -> Result<Clock> {
+        self.execute(GetClock).await
+    }
+    
+    /// Wait for the market to open.
+    /// If the market is open, this will return immediately (excluding getting the clock data from
+    /// Alpaca).
+    pub async fn await_market_open(&self) -> Result<()> {
+        trace!("Awaiting market opening.");
+        let clock = self.get_clock().await?;
+        if clock.is_open {
+            trace!("Market is already open, not waiting.");
+            return Ok(());
+        }
+
+        let wait = clock.next_open - clock.timestamp;
+        trace!(
+            "Waiting for market opening - {}h {}m left (until {})",
+            wait.num_hours(),
+            wait.num_minutes() - (wait.num_hours() * 60),
+            clock.next_open.naive_utc()
+        );
+        async_std::task::sleep(wait.to_std().expect("duration to be non-negative")).await;
+
+        Ok(())
+    }
+
     pub async fn execute<T: ClientEndpoint<Context = Self, Error = Error>>(
         &self,
         endpoint: T,
@@ -79,5 +111,9 @@ impl HttpClientContext for TradingClient {
 
 /// Get account details.
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, Hash, ClientEndpoint)]
-#[endpoint(Get "/account" in TradingClient -> Account)]
+#[endpoint(Get "/v2/account" in TradingClient -> Account)]
 pub struct GetAccount;
+
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, Hash, ClientEndpoint)]
+#[endpoint(Get "/v2/clock" in TradingClient -> Clock)]
+pub struct GetClock;

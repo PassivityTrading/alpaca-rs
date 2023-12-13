@@ -4,10 +4,10 @@ use super::*;
 #[serde(rename_all = "lowercase")]
 pub enum StockFeed {
     /// All US exchanges
-    #[default]
     Sip,
     /// Only the Investors Exchange (IEX in short)
     #[serde(rename = "iex")]
+    #[default]
     InvestorsExchange,
     /// Only over-the-counter (OTC) exchanges
     #[serde(rename = "otc")]
