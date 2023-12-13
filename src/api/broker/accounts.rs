@@ -86,7 +86,6 @@ pub struct CreateAccount {
     pub contact: Contact,
     #[required]
     pub identity: Identity,
-    #[required]
     pub disclosures: Disclosures,
     pub agreements: Vec<Agreement>,
     pub documents: Vec<Document>,
