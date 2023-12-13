@@ -9,9 +9,9 @@ pub use orders::*;
 pub use positions::*;
 
 /// The production/live url for the [Trader API](https://docs.alpaca.markets/docs/trading-api).
-const TRADING_PROD: &str = "https://api.alpaca.markets";
+const TRADING_PROD: &str = "https://api.alpaca.markets/v2/";
 /// The [Paper Trading](https://docs.alpaca.markets/docs/paper-trading) url for the Trader API.
-const TRADING_PAPER: &str = "https://paper-api.alpaca.markets";
+const TRADING_PAPER: &str = "https://paper-api.alpaca.markets/v2/";
 
 /// The credentials for authorizing on the Trader API.
 pub struct TradingAuth {
@@ -101,7 +101,13 @@ impl HttpClientContext for TradingClient {
     type Error = Error;
 
     fn new_request(&self, method: Method, url: &str) -> Request {
-        self.0.new_request(method, url)
+        // HACK for leading slashes in endpoint urls, the url parser does not like that when
+        // joining so it just yeets out the api version from the base url (i.e.
+        // api.alpaca.markets/v2 with the url /orders becomes api.alpaca.markets/orders).
+        // this behavior is not very sensical but in order to allow stylish urls we can just slice
+        // off the first char (i.e. the leading slash), and if others want to specify another api
+        // version they could just have two (i.e. "//v2/orders").
+        self.0.new_request(method, &url[1..])
     }
 
     async fn run_request(&self, request: Request) -> Result<Response, Self::Error> {
@@ -111,9 +117,9 @@ impl HttpClientContext for TradingClient {
 
 /// Get account details.
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, Hash, ClientEndpoint)]
-#[endpoint(Get "/v2/account" in TradingClient -> Account)]
+#[endpoint(Get "/account" in TradingClient -> Account)]
 pub struct GetAccount;
 
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, Hash, ClientEndpoint)]
-#[endpoint(Get "/v2/clock" in TradingClient -> Clock)]
+#[endpoint(Get "/clock" in TradingClient -> Clock)]
 pub struct GetClock;

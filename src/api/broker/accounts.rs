@@ -50,7 +50,13 @@ impl HttpClientContext for AccountView {
     type Error = Error;
 
     fn new_request(&self, method: Method, url: &str) -> Request {
-        self.client.new_request(method, url)
+        // HACK for leading slashes in endpoint urls, the url parser does not like that when
+        // joining so it just yeets out the api version from the base url (i.e.
+        // api.alpaca.markets/v2 with the url /orders becomes api.alpaca.markets/orders).
+        // this behavior is not very sensical but in order to allow stylish urls we can just slice
+        // off the first char (i.e. the leading slash), and if others want to specify another api
+        // version they could just have two (i.e. "//v2/orders").
+        self.client.new_request(method, &url[1..])
     }
 
     async fn run_request(&self, request: Request) -> Result<Response, Self::Error> {

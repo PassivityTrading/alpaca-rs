@@ -9,17 +9,17 @@ pub use stock::*;
 
 // No API /version because its different on some endpoints
 /// The live url for the Market Data API
-const MARKET_PROD: &str = "https://data.alpaca.markets";
+const MARKET_PROD: &str = "https://data.alpaca.markets/v2";
 /// The sandbox url for the Market Data API
-#[allow(dead_code)] // FIXME
-const MARKET_SANDBOX: &str = "https://data.sandbox.alpaca.markets";
+#[allow(dead_code)] // FIXME does not work currently
+const MARKET_SANDBOX: &str = "https://data.sandbox.alpaca.markets/v2";
 
 /// This client provides access to a "standalone" account on the Alpaca brokerage.
 #[must_use = "A client does not do anything unless you execute endpoints with it yourself"]
 pub struct MarketDataClient(HttpClient<super::trading::TraderMiddleware>);
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash, ClientEndpoint)]
-#[endpoint(Get(query) "/v2/calendar" in MarketDataClient -> Calendar)]
+#[endpoint(Get(query) "/calendar" in MarketDataClient -> Calendar)]
 pub struct GetCalendar {
     pub start: Option<Date>,
     pub end: Option<Date>,
@@ -68,7 +68,13 @@ impl HttpClientContext for MarketDataClient {
     type Error = Error;
 
     fn new_request(&self, method: Method, url: &str) -> Request {
-        self.0.new_request(method, url)
+        // HACK for leading slashes in endpoint urls, the url parser does not like that when
+        // joining so it just yeets out the api version from the base url (i.e.
+        // api.alpaca.markets/v2 with the url /orders becomes api.alpaca.markets/orders).
+        // this behavior is not very sensical but in order to allow stylish urls we can just slice
+        // off the first char (i.e. the leading slash), and if others want to specify another api
+        // version they could just have two (i.e. "//v2/orders").
+        self.0.new_request(method, &url[1..])
     }
 
     async fn run_request(&self, request: Request) -> Result<Response, Self::Error> {

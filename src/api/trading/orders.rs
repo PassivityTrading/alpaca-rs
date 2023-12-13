@@ -4,7 +4,7 @@ use super::*;
 /// Create an order.
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone, ClientEndpoint)]
-#[endpoint(Post(json) "/v2/orders" in TradingClient -> Order)]
+#[endpoint(Post(json) "/orders" in TradingClient -> Order)]
 pub struct CreateOrder {
     /// The symbol/ticker of the stock being traded.
     #[required]
@@ -54,7 +54,7 @@ impl std::fmt::Display for CreateOrder {
 
 #[with_builder(cancel_order)]
 #[derive(Serialize, Deserialize, Debug, Clone, ClientEndpoint)]
-#[endpoint(Delete(empty, empty) "/v2/orders/{order_id}" in TradingClient)]
+#[endpoint(Delete(empty, empty) "orders/{order_id}" in TradingClient)]
 pub struct CancelOrder {
     #[required]
     pub order_id: String,
