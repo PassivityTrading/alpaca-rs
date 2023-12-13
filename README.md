@@ -3,7 +3,6 @@
 ## Features
 
 - Easy to use - Minimal setup and no boilerplate.
-- Fast - Our own HTTP client, [Acril](https://github.com/PassivityTrading/acril), gives us better performance with less code.
 - Cross-platform - can run on most platforms that Rust can run on, including WebAssembly.
 - Interoperable - does not depend on any async runtime, so you can use whatever executor you want, like [Tokio](https://tokio.rs), [`actix-rt`](https://crates.io/crates/actix-rt), or [`async-std`'s own executor](https://docs.rs/async-std/latest/async_std/task/fn.spawn.html).
 - Supports **all** Alpaca APIs - Broker, Trading and Market Data APIs.
