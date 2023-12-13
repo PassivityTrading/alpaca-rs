@@ -3,15 +3,17 @@ use std::time::Duration;
 use actix_rt::*;
 use alpaca_rs::{
     api::{
-        market_data::{MarketDataClient, GetHistoricalBars},
-        trading::{CancelOrder, CreateOrder, GetAccount, GetOpenPosition, TradingAuth, TradingClient},
+        market_data::{GetHistoricalBars, MarketDataClient},
+        trading::{
+            CancelOrder, CreateOrder, GetAccount, GetOpenPosition, TradingAuth, TradingClient,
+        },
     },
     chrono::{self, Utc},
     model::{
         Account, OpenPosition, Order, OrderAmount, OrderClass, OrderSide, OrderTif, OrderType,
         SymbolOrAssetId, Timeframe,
     },
-    Result
+    Result,
 };
 use tracing::*;
 use tracing_subscriber::EnvFilter;
@@ -28,18 +30,23 @@ struct Service {
 
 impl Service {
     async fn limit_order(&self, limit_price: f64, side: OrderSide, qty: i64) -> Result<Order> {
-        info!("Creating a {side} limit order (at ${limit_price}) for {qty} shares of {}", self.stock);
+        info!(
+            "Creating a {side} limit order (at ${limit_price}) for {qty} shares of {}",
+            self.stock
+        );
 
-        self.alpaca.execute(CreateOrder {
-            extended_hours: false,
-            amount: OrderAmount::Quantity(qty),
-            order_class: OrderClass::Simple,
-            symbol: self.stock.clone(),
-            kind: OrderType::Limit { limit_price },
-            side,
-            time_in_force: OrderTif::Day,
-            client_order_id: None,
-        }).await
+        self.alpaca
+            .execute(CreateOrder {
+                extended_hours: false,
+                amount: OrderAmount::Quantity(qty),
+                order_class: OrderClass::Simple,
+                symbol: self.stock.clone(),
+                kind: OrderType::Limit { limit_price },
+                side,
+                time_in_force: OrderTif::Day,
+                client_order_id: None,
+            })
+            .await
     }
     async fn run(mut self) -> Result<()> {
         info!(
@@ -143,7 +150,8 @@ impl Service {
             .execute(GetOpenPosition {
                 symbol_or_asset_id: SymbolOrAssetId::SymbolId(self.stock.clone()),
             })
-            .await.unwrap_or_default();
+            .await
+            .unwrap_or_default();
 
         let bars = self
             .market
@@ -171,7 +179,8 @@ impl Service {
                 info!("liquidating {pos_qty} positions at ${current_price} per share");
 
                 self.last_order = Some(
-                    self.limit_order(current_price, OrderSide::Sell, pos_qty).await?
+                    self.limit_order(current_price, OrderSide::Sell, pos_qty)
+                        .await?,
                 );
             }
         } else if current_price < self.running_avg {
@@ -197,13 +206,15 @@ impl Service {
                 }
                 let qty_to_buy = (amount_to_add / current_price).floor() as i64;
                 self.last_order = Some(
-                    self.limit_order(current_price, OrderSide::Buy, qty_to_buy).await?
+                    self.limit_order(current_price, OrderSide::Buy, qty_to_buy)
+                        .await?,
                 );
             } else {
                 amount_to_add *= -1.0;
                 let qty_to_sell = ((amount_to_add / current_price).floor() as i64).max(pos_qty);
                 self.last_order = Some(
-                    self.limit_order(current_price, OrderSide::Sell, qty_to_sell).await?
+                    self.limit_order(current_price, OrderSide::Sell, qty_to_sell)
+                        .await?,
                 );
             }
         }
@@ -216,14 +227,15 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
         .init();
-    let (key, secret) = 
-            (std::env::var("APCA_API_KEY").unwrap(),
-            std::env::var("APCA_SECRET_KEY").unwrap());
+    let (key, secret) = (
+        std::env::var("APCA_API_KEY").unwrap(),
+        std::env::var("APCA_SECRET_KEY").unwrap(),
+    );
 
     Service {
         alpaca: TradingClient::new_paper(TradingAuth {
             key: key.clone(),
-            secret: secret.clone()
+            secret: secret.clone(),
         }),
         market: MarketDataClient::new_live(TradingAuth { key, secret }),
         wait_for_open: !std::env::var("APCA_WAIT_OPEN").is_ok_and(|x| x == "0"),

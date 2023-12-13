@@ -8,12 +8,12 @@ use super::*;
 use crate::model::*;
 
 pub mod broker;
-pub mod trading;
 pub mod market_data;
+pub mod trading;
 
 // hack: chrono is reexported from serde_with (we use a glob import) so we override that with an extern crate
 extern crate chrono;
 
 use serde::{Deserialize, Serialize};
-use serde_with::{*, formats::*};
+use serde_with::{formats::*, *};
 use std::collections::HashMap;

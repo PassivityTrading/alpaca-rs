@@ -35,7 +35,16 @@ impl Middleware for TraderMiddleware {
 
         Ok(match NoMiddleware.call(request).await? {
             res if res.status().is_success() => res,
-            mut other => return Err(http_types::Error::from_str(other.status(), format!("status was not successful: {other:?}, {}", other.body_string().await?)).into())
+            mut other => {
+                return Err(http_types::Error::from_str(
+                    other.status(),
+                    format!(
+                        "status was not successful: {other:?}, {}",
+                        other.body_string().await?
+                    ),
+                )
+                .into())
+            }
         })
     }
 }
@@ -56,7 +65,7 @@ impl TradingClient {
     pub fn new(auth: TradingAuth, base_url: Url) -> Self {
         Self(HttpClient::new_with(TraderMiddleware(auth)).with_base_url(base_url))
     }
-    
+
     /// Gets the account data for this trading account.
     pub async fn get_account(&self) -> Result<Account> {
         self.execute(GetAccount).await
@@ -65,7 +74,7 @@ impl TradingClient {
     pub async fn get_clock(&self) -> Result<Clock> {
         self.execute(GetClock).await
     }
-    
+
     /// Wait for the market to open.
     /// If the market is open, this will return immediately (excluding getting the clock data from
     /// Alpaca).

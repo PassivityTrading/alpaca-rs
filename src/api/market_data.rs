@@ -1,4 +1,7 @@
-use super::{*, trading::{TradingAuth, TraderMiddleware}};
+use super::{
+    trading::{TraderMiddleware, TradingAuth},
+    *,
+};
 use std::ops::RangeBounds;
 
 #[cfg(feature = "market-data-live")]
@@ -28,10 +31,14 @@ pub struct GetCalendar {
 
 impl MarketDataClient {
     pub fn new(auth: TradingAuth, base_url: Url) -> Self {
-Self(HttpClient::new_with(TraderMiddleware(auth)).with_base_url(base_url))
+        Self(HttpClient::new_with(TraderMiddleware(auth)).with_base_url(base_url))
     }
-    pub fn new_live(auth: TradingAuth) -> Self { Self::new(auth, MARKET_PROD.parse().unwrap()) }
-    pub fn new_sandbox(auth: TradingAuth) -> Self { Self::new(auth, MARKET_SANDBOX.parse().unwrap()) }
+    pub fn new_live(auth: TradingAuth) -> Self {
+        Self::new(auth, MARKET_PROD.parse().unwrap())
+    }
+    pub fn new_sandbox(auth: TradingAuth) -> Self {
+        Self::new(auth, MARKET_SANDBOX.parse().unwrap())
+    }
 
     pub async fn execute<T: ClientEndpoint<Context = Self, Error = Error>>(
         &self,
@@ -60,7 +67,8 @@ Self(HttpClient::new_with(TraderMiddleware(auth)).with_base_url(base_url))
             },
             date_type,
         }
-        .run(self).await
+        .run(self)
+        .await
     }
 }
 

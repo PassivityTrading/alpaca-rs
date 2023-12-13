@@ -6,7 +6,7 @@ use std::fmt::Display;
 
 use chrono::NaiveTime;
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DisplayFromStr, skip_serializing_none};
+use serde_with::{serde_as, skip_serializing_none, DisplayFromStr};
 
 #[derive(Default, Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -66,7 +66,7 @@ pub struct Account {
     #[serde_as(as = "DisplayFromStr")]
     pub cash: f64,
     #[serde_as(as = "DisplayFromStr")]
-    pub buying_power: f64
+    pub buying_power: f64,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -268,7 +268,9 @@ pub struct Order {
     pub kind: OrderType,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash, Default, derive_more::Display)]
+#[derive(
+    Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash, Default, derive_more::Display,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum OrderTif {
     /// The order is good for the day, and it will be canceled
@@ -301,7 +303,9 @@ pub enum OrderTif {
     UntilMarketClose,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash, Default, derive_more::Display)]
+#[derive(
+    Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash, Default, derive_more::Display,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum OrderClass {
     /// Any non-bracket order (i.e., regular market, limit, or stop loss
@@ -639,7 +643,7 @@ impl std::str::FromStr for Timeframe {
             'W' | 'k' => Self::Week,
             // Month / M
             'M' | 'h' => Self::Months(number(s)?),
-            _ => return Err("invalid ending character")
+            _ => return Err("invalid ending character"),
         })
     }
 }
@@ -652,7 +656,7 @@ pub enum CorporateActionAdjustment {
     Split,
     Dividend,
     #[default]
-    All
+    All,
 }
 
 #[derive(Default, Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -682,7 +686,7 @@ pub struct HistoricalBar {
     #[serde(rename = "n")]
     pub trade_count: i64,
     #[serde(rename = "vw")]
-    pub avg_vol_weighted: f64
+    pub avg_vol_weighted: f64,
 }
 
 #[skip_serializing_none]
@@ -697,7 +701,7 @@ pub enum TickType {
     #[display(fmt = "trade")]
     Trade,
     #[display(fmt = "quote")]
-    Quote
+    Quote,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
@@ -705,7 +709,7 @@ pub enum TickType {
 pub enum Tape {
     A,
     B,
-    C
+    C,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
@@ -722,7 +726,7 @@ pub enum QuoteZone {
     // TODO explain
     /// OTC
     #[serde(rename = "O")]
-    Otc
+    Otc,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -753,7 +757,7 @@ pub struct HistoricalQuotes {
     pub quotes: Vec<Quote>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub currency: Option<String>,
-    pub next_page_token: Option<String>
+    pub next_page_token: Option<String>,
 }
 
 #[skip_serializing_none]
@@ -768,7 +772,7 @@ pub struct Clock {
     pub timestamp: DateTime,
     pub is_open: bool,
     pub next_open: DateTime,
-    pub next_close: DateTime
+    pub next_close: DateTime,
 }
 
 #[derive(Default, Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -776,7 +780,7 @@ pub struct Clock {
 pub enum DateType {
     #[default]
     Trading,
-    Settlement
+    Settlement,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -810,7 +814,7 @@ pub struct HistoricalTrade {
     #[serde(rename = "c")]
     pub condition_flags: Vec<String>,
     #[serde(rename = "z")]
-    pub tape: String
+    pub tape: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

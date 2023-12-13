@@ -45,7 +45,7 @@ pub enum Error {
     #[error(transparent)]
     Json(#[from] serde_json::Error),
     #[error(transparent)]
-    Query(#[from] acril::serde_urlencoded::ser::Error)
+    Query(#[from] acril::serde_urlencoded::ser::Error),
 }
 
 impl From<http_types::Error> for Error {

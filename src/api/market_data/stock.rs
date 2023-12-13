@@ -76,7 +76,9 @@ pub struct ConditionCodes {
 }
 
 #[with_builder(exchange_codes)]
-#[derive(Default, Clone, Debug, Serialize, Deserialize, Copy, PartialEq, Eq, Hash, ClientEndpoint)]
+#[derive(
+    Default, Clone, Debug, Serialize, Deserialize, Copy, PartialEq, Eq, Hash, ClientEndpoint,
+)]
 #[endpoint(Get "/v2/stocks/meta/exchanges" in MarketDataClient -> HashMap<String, String>)]
 pub struct ExchangeCodes;
 
