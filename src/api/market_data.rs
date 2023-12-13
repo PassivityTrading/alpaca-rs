@@ -14,7 +14,6 @@ pub use stock::*;
 /// The live url for the Market Data API
 const MARKET_PROD: &str = "https://data.alpaca.markets/v2";
 /// The sandbox url for the Market Data API
-#[allow(dead_code)] // FIXME does not work currently
 const MARKET_SANDBOX: &str = "https://data.sandbox.alpaca.markets/v2";
 
 /// This client provides access to a "standalone" account on the Alpaca brokerage.

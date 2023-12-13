@@ -14,9 +14,26 @@ const TRADING_PROD: &str = "https://api.alpaca.markets/v2/";
 const TRADING_PAPER: &str = "https://paper-api.alpaca.markets/v2/";
 
 /// The credentials for authorizing on the Trader API.
+#[derive(Clone)]
 pub struct TradingAuth {
-    pub key: String,
+    pub key_id: String,
     pub secret: String,
+}
+
+impl TradingAuth {
+    pub fn from_env() -> Self {
+        Self::try_from_env().expect("API keys are not available, try to set these environment variables: APCA_API_KEY_ID and APCA_API_SECRET_KEY")
+    }
+    pub fn try_from_env() -> Result<Self, std::env::VarError> {
+        Self::try_from_custom_env("APCA_API_KEY_ID", "APCA_API_SECRET_KEY")
+    }
+
+    pub fn try_from_custom_env(key_id: impl AsRef<std::ffi::OsStr>, secret: impl AsRef<std::ffi::OsStr>) -> Result<Self, std::env::VarError> {
+        Ok(Self {
+            key_id: std::env::var(key_id)?,
+            secret: std::env::var(secret)?
+        })
+    }
 }
 
 pub(crate) struct TraderMiddleware(pub(crate) TradingAuth);
@@ -28,7 +45,7 @@ impl Service for TraderMiddleware {
 
 impl Middleware for TraderMiddleware {
     async fn call(&self, mut request: Request) -> Result<Response, <Self as Service>::Error> {
-        request.append_header("APCA-API-KEY-ID", &self.0.key);
+        request.append_header("APCA-API-KEY-ID", &self.0.key_id);
         request.append_header("APCA-API-SECRET-KEY", &self.0.secret);
 
         trace!("{request:?}");

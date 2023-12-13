@@ -227,17 +227,13 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
         .init();
-    let (key, secret) = (
-        std::env::var("APCA_API_KEY").unwrap(),
-        std::env::var("APCA_SECRET_KEY").unwrap(),
-    );
+
+    let auth = TradingAuth::from_env();
 
     Service {
-        alpaca: TradingClient::new_paper(TradingAuth {
-            key: key.clone(),
-            secret: secret.clone(),
-        }),
-        market: MarketDataClient::new_live(TradingAuth { key, secret }),
+        alpaca: TradingClient::new_paper(auth.clone()),
+        // FIXME #4
+        market: MarketDataClient::new_sandbox(auth),
         wait_for_open: !std::env::var("APCA_WAIT_OPEN").is_ok_and(|x| x == "0"),
         stock: std::env::var("APCA_MEANREV_STOCK").unwrap(),
         minutes: 20,
