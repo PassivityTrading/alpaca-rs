@@ -2,6 +2,7 @@ use super::*;
 
 /// Create an order on behalf of an account in the Broker API.
 #[with_builder(create_order)]
+#[skip_serializing_none]
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone, ClientEndpoint)]
 #[endpoint(Post(json) "/orders" in AccountView -> Order)]
@@ -24,28 +25,21 @@ pub struct CreateOrderBroker {
     /// Specifies if the order is allowed to be processed in extended hours.
     pub extended_hours: bool,
     // TODO explain
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub client_order_id: Option<String>,
     // TODO explain
     pub order_class: OrderClass,
     /// The commission that the broker takes.
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde_as(as = "Option<serde_with::DisplayFromStr>")]
     pub commission: Option<f64>,
     // TODO explain
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde_as(as = "Option<serde_with::DisplayFromStr>")]
     pub commission_bps: Option<f64>,
     // TODO explain [no official explanation]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub source: Option<String>,
     // TODO explain [no official explanation]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub instructions: Option<String>,
     // TODO explain [no official explanation]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub subtag: Option<String>,
     // TODO explain [no official explanation]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub swap_fee_bps: Option<String>,
 }

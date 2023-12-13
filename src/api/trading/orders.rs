@@ -2,6 +2,7 @@ use super::*;
 
 #[with_builder(create_order)]
 /// Create an order.
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone, ClientEndpoint)]
 #[endpoint(Post(json) "/orders" in TradingClient -> Order)]
 pub struct CreateOrder {
@@ -23,7 +24,6 @@ pub struct CreateOrder {
     /// Specifies if the order is allowed to be processed in extended hours.
     pub extended_hours: bool,
     // TODO explain
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub client_order_id: Option<String>,
     // TODO explain
     pub order_class: OrderClass,

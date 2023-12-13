@@ -6,7 +6,7 @@ use std::fmt::Display;
 
 use chrono::NaiveTime;
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DisplayFromStr};
+use serde_with::{serde_as, DisplayFromStr, skip_serializing_none};
 
 #[derive(Default, Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -347,6 +347,7 @@ pub enum BankRelationshipStatus {
     Canceled,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct BankRelationship {
     pub id: String,
@@ -356,15 +357,10 @@ pub struct BankRelationship {
     pub status: BankRelationshipStatus,
     pub name: String,
     pub account_number: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub country: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub state_province: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub postal_code: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub city: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub street_address: Option<String>,
 }
 
@@ -384,6 +380,7 @@ pub enum BankAccountType {
     Savings,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct AchRelationship {
     pub id: String,
@@ -392,13 +389,9 @@ pub struct AchRelationship {
     pub account_id: String,
     pub status: AchRelationshipStatus,
     pub account_owner_name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub bank_account_type: Option<BankAccountType>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub bank_account_number: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub bank_routing_number: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub nickname: Option<String>,
 }
 
@@ -438,33 +431,26 @@ pub enum TransferStatus {
     Returned,
 }
 
+#[skip_serializing_none]
 #[serde_as]
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct Transfer {
     pub id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub relationship_id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub bank_id: Option<String>,
     pub account_id: String,
     #[serde(rename = "type")]
     pub kind: TransferType,
     pub status: TransferStatus,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
     #[serde_as(as = "DisplayFromStr")]
     pub amount: f64,
     pub direction: Direction,
     pub created_at: DateTime,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub updated_at: Option<DateTime>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub expires_at: Option<DateTime>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub additional_information: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub hold_until: Option<DateTime>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub instant_amount: Option<String>,
 }
 
@@ -489,6 +475,7 @@ pub enum AssetClass {
     Crypto,
 }
 
+#[skip_serializing_none]
 #[serde_as]
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct OpenPosition {
@@ -496,7 +483,6 @@ pub struct OpenPosition {
     pub symbol: String,
     pub exchange: String,
     pub asset_class: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub asset_marginable: Option<bool>,
     #[serde_as(as = "DisplayFromStr")]
     pub avg_entry_price: f64,
@@ -521,7 +507,6 @@ pub struct OpenPosition {
     pub lastday_price: f64,
     #[serde_as(as = "DisplayFromStr")]
     pub change_today: f64,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub swap_rate: Option<String>,
 }
 
@@ -672,7 +657,9 @@ pub enum CorporateActionAdjustment {
 #[derive(Default, Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct HistoricalBars {
     pub bars: HashMap<String, Vec<HistoricalBar>>,
+    // required here, type is String | null
     pub next_page_token: Option<String>,
+    // not required here, type is String or undefined
     #[serde(skip_serializing_if = "Option::is_none")]
     pub currency: Option<String>,
 }
@@ -697,10 +684,10 @@ pub struct HistoricalBar {
     pub avg_vol_weighted: f64
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct LatestBars {
     pub bars: Vec<HistoricalBar>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub currency: Option<String>,
 }
 
@@ -768,10 +755,10 @@ pub struct HistoricalQuotes {
     pub next_page_token: Option<String>
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct LatestQuotes {
     pub quotes: Vec<Quote>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub currency: Option<String>,
 }
 
@@ -844,9 +831,9 @@ pub struct HistoricalTrades {
     pub currency: Option<String>,
 }
 
+#[skip_serializing_none]
 #[derive(Default, Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct LatestTrades {
     pub trades: Vec<HistoricalTrade>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub currency: Option<String>,
 }

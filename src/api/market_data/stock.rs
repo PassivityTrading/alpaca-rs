@@ -54,6 +54,7 @@ pub struct GetHistoricalBars {
 }
 
 #[with_builder(get_latest_bars)]
+#[skip_serializing_none]
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize, ClientEndpoint)]
 #[endpoint(Get(query) "/v2/stocks/bars/latest" in MarketDataClient -> LatestBars)]
@@ -62,7 +63,6 @@ pub struct GetLatestBars {
     #[required]
     pub symbols: Vec<String>,
     pub feed: StockFeed,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub currency: Option<String>,
 }
 

@@ -64,16 +64,14 @@ impl HttpClientContext for AccountView {
 pub struct GetAccount;
 
 #[with_builder(get_all_accounts)]
+#[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, Default, ClientEndpoint)]
 #[endpoint(Get(query) "/accounts" in BrokerClient -> Vec<SmallAccount>)]
 pub struct GetAllAccounts {
     #[required]
     pub query: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub created_after: Option<DateTime<Utc>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub created_before: Option<DateTime<Utc>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<AccountStatus>,
     #[serde(default)]
     pub sort: Sort,
@@ -106,16 +104,13 @@ impl CreateAccountBuilder<'_> {
 
 // FIXME inconsistent casing? snakecase everywhere except here
 #[with_builder(update_account)]
+#[skip_serializing_none]
 #[derive(Default, Debug, Clone, Serialize, Deserialize, ClientEndpoint)]
 #[endpoint(Patch(json) (format!("/accounts/{}", client.id())) in AccountView -> Account)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateAccount {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub contact: Option<Contact>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub identity: Option<Identity>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub disclosures: Option<Disclosures>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub trusted_contact: Option<TrustedContact>,
 }
