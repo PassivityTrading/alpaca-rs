@@ -1,32 +1,102 @@
 use super::*;
 
-with_builder! { |broker|
-    #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-    pub struct GetAllAccounts {
-        pub query: Vec<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub created_after: Option<DateTime<Utc>>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub created_before: Option<DateTime<Utc>>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub status: Option<AccountStatus>,
-        #[serde(default)]
-        pub sort: Sort,
-        pub entities: Vec<String>,
+/// An account view is like a [`BrokerClient`], but scoped to a single account.
+#[must_use = "An account view does not do anything unless you execute endpoints with it yourself"]
+pub struct AccountView {
+    data: Option<Account>,
+    id: String,
+    client: HttpClient<BrokerMiddleware>,
+}
+
+impl AccountView {
+    // fields are private, this is the only way to init self
+    pub(super) fn new(id: String, middleware: BrokerMiddleware, base_url: Url) -> Self {
+        Self {
+            data: None,
+            id,
+            client: HttpClient::new_with(middleware).with_base_url(base_url),
+        }
+    }
+
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
+    pub async fn data(&mut self) -> Result<Account> {
+        if let Some(account) = self.data.as_ref().cloned() {
+            Ok(account)
+        } else {
+            let account = self.execute(GetAccount).await?;
+
+            self.data = Some(account.clone());
+
+            Ok(account)
+        }
+    }
+
+    pub fn get_data(&self) -> Option<&Account> {
+        self.data.as_ref()
+    }
+
+    pub async fn execute<T: ClientEndpoint<Context = Self, Error = Error>>(
+        &self,
+        endpoint: T,
+    ) -> Result<T::Output> {
+        endpoint.run(self).await
     }
 }
 
-with_builder! { |broker|
-    #[derive(Debug, Clone, Serialize, Deserialize)]
-    pub struct CreateAccount {
-        pub contact: Contact,
-        pub identity: Identity,
-        pub disclosures: Disclosures,
-        pub agreements: Vec<Agreement>,
-        pub documents: Vec<Document>,
-        pub trusted_contact: TrustedContact,
-        pub enabled_assets: Vec<String>,
+impl HttpClientContext for AccountView {
+    type Error = Error;
+
+    fn new_request(&self, method: Method, url: &str) -> Request {
+        // HACK for leading slashes in endpoint urls, the url parser does not like that when
+        // joining so it just yeets out the api version from the base url (i.e.
+        // api.alpaca.markets/v2 with the url /orders becomes api.alpaca.markets/orders).
+        // this behavior is not very sensical but in order to allow stylish urls we can just slice
+        // off the first char (i.e. the leading slash), and if others want to specify another api
+        // version they could just have two (i.e. "//v2/orders").
+        self.client.new_request(method, &url[1..])
     }
+
+    async fn run_request(&self, request: Request) -> Result<Response, Self::Error> {
+        self.client.run_request(request).await
+    }
+}
+
+#[with_builder(get_account)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default, ClientEndpoint)]
+#[endpoint(Get(empty) (format!("/accounts/{}", client.id())) in AccountView -> Account)]
+pub struct GetAccount;
+
+#[with_builder(get_all_accounts)]
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, ClientEndpoint)]
+#[endpoint(Get(query) "/accounts" in BrokerClient -> Vec<SmallAccount>)]
+pub struct GetAllAccounts {
+    #[required]
+    pub query: Vec<String>,
+    pub created_after: Option<DateTime<Utc>>,
+    pub created_before: Option<DateTime<Utc>>,
+    pub status: Option<AccountStatus>,
+    #[serde(default)]
+    pub sort: Sort,
+    pub entities: Vec<String>,
+}
+
+#[with_builder(create_account)]
+#[derive(Debug, Clone, Serialize, Deserialize, ClientEndpoint)]
+#[endpoint(Post "/accounts" in BrokerClient -> Account)]
+pub struct CreateAccount {
+    #[required]
+    pub contact: Contact,
+    #[required]
+    pub identity: Identity,
+    pub disclosures: Disclosures,
+    pub agreements: Vec<Agreement>,
+    pub documents: Vec<Document>,
+    pub trusted_contact: TrustedContact,
+    pub enabled_assets: Vec<String>,
 }
 
 impl CreateAccountBuilder<'_> {
@@ -37,52 +107,15 @@ impl CreateAccountBuilder<'_> {
     }
 }
 
-with_builder! { |account|
-    // FIXME inconsistent casing? snakecase everywhere except here
-    #[derive(Default, Debug, Clone, Serialize, Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    pub struct UpdateAccount {
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub contact: Option<Contact>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub identity: Option<Identity>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub disclosures: Option<Disclosures>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub trusted_contact: Option<TrustedContact>
-    }
-}
-
-impl BrokerClient {
-    pub fn create_account(&self, contact: Contact, identity: Identity) -> CreateAccountBuilder {
-        CreateAccountBuilder(
-            self,
-            CreateAccount {
-                contact,
-                identity,
-                disclosures: Default::default(),
-                agreements: vec![],
-                documents: vec![],
-                trusted_contact: Default::default(),
-                enabled_assets: vec![],
-            },
-        )
-    }
-
-    pub fn get_all_accounts(&self) -> GetAllAccountsBuilder {
-        GetAllAccountsBuilder(self, GetAllAccounts::default())
-    }
-}
-
-impl AccountView<'_> {
-    pub fn update(&self) -> UpdateAccountBuilder {
-        UpdateAccountBuilder(self, UpdateAccount::default())
-    }
-}
-
-endpoint! {
-    impl GET "/accounts" = GetAllAccounts => Vec<SmallAccount> { |this, request| request.query(this).query(&[("query", this.query.join(" "))]) };
-    impl POST "/accounts" = CreateAccount => Account { |this, request| request.json(this) };
-    impl PATCH "/accounts" = UpdateAccount => Account { |this, request| request.json(this) }
-    | account (|_, account_id| format!("/accounts/{account_id}"));
+// FIXME inconsistent casing? snakecase everywhere except here
+#[with_builder(update_account)]
+#[skip_serializing_none]
+#[derive(Default, Debug, Clone, Serialize, Deserialize, ClientEndpoint)]
+#[endpoint(Patch(json) (format!("/accounts/{}", client.id())) in AccountView -> Account)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateAccount {
+    pub contact: Option<Contact>,
+    pub identity: Option<Identity>,
+    pub disclosures: Option<Disclosures>,
+    pub trusted_contact: Option<TrustedContact>,
 }

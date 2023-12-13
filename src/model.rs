@@ -6,7 +6,7 @@ use std::fmt::Display;
 
 use chrono::NaiveTime;
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DisplayFromStr};
+use serde_with::{serde_as, skip_serializing_none, DisplayFromStr};
 
 #[derive(Default, Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -66,7 +66,7 @@ pub struct Account {
     #[serde_as(as = "DisplayFromStr")]
     pub cash: f64,
     #[serde_as(as = "DisplayFromStr")]
-    pub buying_power: f64
+    pub buying_power: f64,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -268,7 +268,9 @@ pub struct Order {
     pub kind: OrderType,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash, Default, derive_more::Display)]
+#[derive(
+    Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash, Default, derive_more::Display,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum OrderTif {
     /// The order is good for the day, and it will be canceled
@@ -301,7 +303,9 @@ pub enum OrderTif {
     UntilMarketClose,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash, Default, derive_more::Display)]
+#[derive(
+    Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash, Default, derive_more::Display,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum OrderClass {
     /// Any non-bracket order (i.e., regular market, limit, or stop loss
@@ -347,6 +351,7 @@ pub enum BankRelationshipStatus {
     Canceled,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct BankRelationship {
     pub id: String,
@@ -356,15 +361,10 @@ pub struct BankRelationship {
     pub status: BankRelationshipStatus,
     pub name: String,
     pub account_number: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub country: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub state_province: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub postal_code: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub city: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub street_address: Option<String>,
 }
 
@@ -384,6 +384,7 @@ pub enum BankAccountType {
     Savings,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct AchRelationship {
     pub id: String,
@@ -392,13 +393,9 @@ pub struct AchRelationship {
     pub account_id: String,
     pub status: AchRelationshipStatus,
     pub account_owner_name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub bank_account_type: Option<BankAccountType>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub bank_account_number: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub bank_routing_number: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub nickname: Option<String>,
 }
 
@@ -438,33 +435,26 @@ pub enum TransferStatus {
     Returned,
 }
 
+#[skip_serializing_none]
 #[serde_as]
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct Transfer {
     pub id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub relationship_id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub bank_id: Option<String>,
     pub account_id: String,
     #[serde(rename = "type")]
     pub kind: TransferType,
     pub status: TransferStatus,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
     #[serde_as(as = "DisplayFromStr")]
     pub amount: f64,
     pub direction: Direction,
     pub created_at: DateTime,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub updated_at: Option<DateTime>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub expires_at: Option<DateTime>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub additional_information: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub hold_until: Option<DateTime>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub instant_amount: Option<String>,
 }
 
@@ -475,9 +465,10 @@ pub enum BankCodeType {
     Bic,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Default, Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
 #[serde(rename_all = "lowercase")]
 pub enum Side {
+    #[default]
     Long,
     Short,
 }
@@ -489,14 +480,14 @@ pub enum AssetClass {
     Crypto,
 }
 
+#[skip_serializing_none]
 #[serde_as]
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
 pub struct OpenPosition {
     pub asset_id: String,
     pub symbol: String,
     pub exchange: String,
     pub asset_class: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub asset_marginable: Option<bool>,
     #[serde_as(as = "DisplayFromStr")]
     pub avg_entry_price: f64,
@@ -521,7 +512,6 @@ pub struct OpenPosition {
     pub lastday_price: f64,
     #[serde_as(as = "DisplayFromStr")]
     pub change_today: f64,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub swap_rate: Option<String>,
 }
 
@@ -653,7 +643,7 @@ impl std::str::FromStr for Timeframe {
             'W' | 'k' => Self::Week,
             // Month / M
             'M' | 'h' => Self::Months(number(s)?),
-            _ => return Err("invalid ending character")
+            _ => return Err("invalid ending character"),
         })
     }
 }
@@ -666,13 +656,15 @@ pub enum CorporateActionAdjustment {
     Split,
     Dividend,
     #[default]
-    All
+    All,
 }
 
 #[derive(Default, Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct HistoricalBars {
     pub bars: HashMap<String, Vec<HistoricalBar>>,
+    // required here, type is String | null
     pub next_page_token: Option<String>,
+    // not required here, type is String or undefined
     #[serde(skip_serializing_if = "Option::is_none")]
     pub currency: Option<String>,
 }
@@ -694,13 +686,13 @@ pub struct HistoricalBar {
     #[serde(rename = "n")]
     pub trade_count: i64,
     #[serde(rename = "vw")]
-    pub avg_vol_weighted: f64
+    pub avg_vol_weighted: f64,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct LatestBars {
     pub bars: Vec<HistoricalBar>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub currency: Option<String>,
 }
 
@@ -709,7 +701,7 @@ pub enum TickType {
     #[display(fmt = "trade")]
     Trade,
     #[display(fmt = "quote")]
-    Quote
+    Quote,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
@@ -717,7 +709,7 @@ pub enum TickType {
 pub enum Tape {
     A,
     B,
-    C
+    C,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
@@ -734,7 +726,7 @@ pub enum QuoteZone {
     // TODO explain
     /// OTC
     #[serde(rename = "O")]
-    Otc
+    Otc,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -765,13 +757,13 @@ pub struct HistoricalQuotes {
     pub quotes: Vec<Quote>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub currency: Option<String>,
-    pub next_page_token: Option<String>
+    pub next_page_token: Option<String>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct LatestQuotes {
     pub quotes: Vec<Quote>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub currency: Option<String>,
 }
 
@@ -780,7 +772,7 @@ pub struct Clock {
     pub timestamp: DateTime,
     pub is_open: bool,
     pub next_open: DateTime,
-    pub next_close: DateTime
+    pub next_close: DateTime,
 }
 
 #[derive(Default, Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -788,7 +780,7 @@ pub struct Clock {
 pub enum DateType {
     #[default]
     Trading,
-    Settlement
+    Settlement,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -822,7 +814,7 @@ pub struct HistoricalTrade {
     #[serde(rename = "c")]
     pub condition_flags: Vec<String>,
     #[serde(rename = "z")]
-    pub tape: String
+    pub tape: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -844,9 +836,9 @@ pub struct HistoricalTrades {
     pub currency: Option<String>,
 }
 
+#[skip_serializing_none]
 #[derive(Default, Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct LatestTrades {
     pub trades: Vec<HistoricalTrade>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub currency: Option<String>,
 }
