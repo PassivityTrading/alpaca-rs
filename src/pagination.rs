@@ -1,5 +1,4 @@
-//! (TODO) A module providing pagination capabilities.
-// use super::*;
+//! A module providing pagination capabilities.
 
 use acril::Service;
 
